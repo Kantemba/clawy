@@ -10,6 +10,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/Kantemba/clawy/pkg/security"
 	"github.com/rs/zerolog"
 	"golang.org/x/term"
 )
@@ -42,6 +43,7 @@ var (
 	mu            sync.RWMutex
 	writers       []io.Writer
 	consoleWriter zerolog.ConsoleWriter
+	redactor      *security.Redactor
 )
 
 func init() {
@@ -76,6 +78,9 @@ func init() {
 		writers = append(writers, consoleWriter)
 
 		logger = zerolog.New(io.MultiWriter(writers...)).With().Timestamp().Caller().Logger()
+
+		// Initialize the security redactor for log output.
+		redactor = security.NewRedactor()
 	})
 }
 
@@ -302,6 +307,21 @@ func getEvent(logger zerolog.Logger, level LogLevel) *zerolog.Event {
 	}
 }
 
+// SetRedactor sets a custom security redactor for log output.
+// Pass nil to disable redaction.
+func SetRedactor(r *security.Redactor) {
+	mu.Lock()
+	defer mu.Unlock()
+	redactor = r
+}
+
+// GetRedactor returns the current security redactor.
+func GetRedactor() *security.Redactor {
+	mu.RLock()
+	defer mu.RUnlock()
+	return redactor
+}
+
 func logMessage(level LogLevel, component string, message string, fields map[string]any) {
 	if level < currentLevel {
 		return
@@ -316,6 +336,11 @@ func logMessage(level LogLevel, component string, message string, fields map[str
 	}
 
 	event.Str(Component, component)
+
+	// Apply security redaction to string fields.
+	if redactor != nil {
+		fields = redactor.RedactMap(fields)
+	}
 
 	appendFields(event, fields)
 

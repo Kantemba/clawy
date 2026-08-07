@@ -80,11 +80,13 @@ func (t *CronTool) Name() string {
 
 // Description returns the tool description
 func (t *CronTool) Description() string {
-	return `Schedule, inspect, and update reminders, tasks, or system commands. 
-IMPORTANT: When user asks to be reminded or scheduled, you MUST call this tool. 
-Use 'at_seconds' for one-time reminders (e.g., 'remind me in 10 minutes' → at_seconds=600). 
-Use 'every_seconds' ONLY for recurring tasks (e.g., 'every 2 hours' → every_seconds=7200). 
-Use 'cron_expr' for complex recurring schedules. 
+	return `Schedule, inspect, and update reminders, tasks, or system commands.
+IMPORTANT: When user asks to be reminded or scheduled, you MUST call this tool.
+CRITICAL DISTINCTION:
+- 'at_seconds' = ONE-TIME only. Use when user says "remind me in X minutes/hours" or "in X seconds".
+- 'every_seconds' = RECURRING. Use when user says "every X minutes/hours/seconds", "repeatedly", "daily", "hourly", "each minute", etc.
+- 'cron_expr' = complex recurring schedules (e.g., '0 9 * * *' for daily at 9am).
+NEVER use at_seconds for recurring requests. If the user says "every minute", that means every_seconds=60, NOT at_seconds=60.
 Use 'command' to execute shell commands directly.`
 }
 
@@ -118,11 +120,11 @@ func (t *CronTool) Parameters() map[string]any {
 			},
 			"at_seconds": map[string]any{
 				"type":        "integer",
-				"description": "One-time reminder: seconds from now when to trigger (e.g., 600 for 10 minutes later). Use this for one-time reminders like 'remind me in 10 minutes'.",
+				"description": "ONE-TIME trigger: seconds from now (e.g., 600 = 10 minutes from now). Only for single reminders like 'remind me in 10 minutes'. Do NOT use for recurring requests.",
 			},
 			"every_seconds": map[string]any{
 				"type":        "integer",
-				"description": "Recurring interval in seconds (e.g., 3600 for every hour). Use this ONLY for recurring tasks like 'every 2 hours' or 'daily reminder'.",
+				"description": "RECURRING interval in seconds (e.g., 60 = every minute, 3600 = every hour). Use for 'every X', 'repeatedly', 'daily', 'hourly', etc.",
 			},
 			"cron_expr": map[string]any{
 				"type":        "string",
@@ -190,14 +192,28 @@ func (t *CronTool) addJob(ctx context.Context, args map[string]any) *ToolResult 
 	hasEvery = hasEvery && everySeconds > 0
 	hasCron = hasCron && cronExpr != ""
 
-	// Priority: at_seconds > every_seconds > cron_expr
-	if hasAt {
-		atMS := time.Now().UnixMilli() + int64(atSeconds)*1000
+	// Detect recurring intent from the message to prevent LLM misclassification.
+	// If the message contains recurring keywords, prefer every_seconds over at_seconds.
+	isRecurring := isRecurringMessage(message)
+
+	// Priority: cron_expr > every_seconds > at_seconds
+	// When recurring intent is detected, at_seconds is promoted to every_seconds.
+	if hasCron {
 		schedule = cron.CronSchedule{
-			Kind: "at",
-			AtMS: &atMS,
+			Kind: "cron",
+			Expr: cronExpr,
 		}
-	} else if hasEvery {
+	} else if hasEvery || (hasAt && isRecurring) {
+		seconds := everySeconds
+		if hasAt && isRecurring {
+			seconds = atSeconds
+		}
+		everyMS := int64(seconds) * 1000
+		schedule = cron.CronSchedule{
+			Kind:    "every",
+			EveryMS: &everyMS,
+		}
+	} else if hasAt {
 		everyMS := int64(everySeconds) * 1000
 		schedule = cron.CronSchedule{
 			Kind:    "every",
@@ -659,4 +675,35 @@ func (t *CronTool) ExecuteJob(ctx context.Context, job *cron.CronJob) string {
 		t.executor.PublishResponseIfNeeded(ctx, channel, chatID, sessionKey, response)
 	}
 	return "ok"
+}
+
+// recurringKeywords are patterns that indicate a recurring schedule intent.
+var recurringKeywords = []string{
+	"every ",
+	"each ",
+	"hourly",
+	"daily",
+	"weekly",
+	"monthly",
+	"recurring",
+	"repeatedly",
+	"always",
+	"per ",
+	"cycle",
+	"loop",
+	"forever",
+	"indefinitely",
+	"continuously",
+}
+
+// isRecurringMessage detects whether a message expresses recurring intent.
+// This prevents the LLM from incorrectly using at_seconds for recurring requests.
+func isRecurringMessage(message string) bool {
+	lower := strings.ToLower(message)
+	for _, kw := range recurringKeywords {
+		if strings.Contains(lower, kw) {
+			return true
+		}
+	}
+	return false
 }

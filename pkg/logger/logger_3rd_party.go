@@ -5,6 +5,8 @@ package logger
 import (
 	"fmt"
 	"regexp"
+
+	"github.com/Kantemba/clawy/pkg/security"
 )
 
 // botTokenRe matches the bot ID prefix and the secret part of a Telegram bot token.
@@ -17,6 +19,21 @@ func maskSecrets(s string) string {
 	return botTokenRe.ReplaceAllString(s, "${1}${2}****${3}")
 }
 
+// redactMessage applies comprehensive security redaction to log messages.
+func redactMessage(s string) string {
+	if redactor == nil {
+		return maskSecrets(s)
+	}
+	return redactor.Redact(maskSecrets(s))
+}
+
+func init() {
+	// Ensure the global redactor is initialized for 3rd party loggers.
+	if redactor == nil {
+		redactor = security.NewRedactor()
+	}
+}
+
 // Logger implements common Logger interface
 type Logger struct {
 	component string
@@ -25,52 +42,52 @@ type Logger struct {
 
 // Debug logs debug messages
 func (b *Logger) Debug(v ...any) {
-	logMessage(DEBUG, b.component, maskSecrets(fmt.Sprint(v...)), nil)
+	logMessage(DEBUG, b.component, redactMessage(fmt.Sprint(v...)), nil)
 }
 
 // Info logs info messages
 func (b *Logger) Info(v ...any) {
-	logMessage(INFO, b.component, maskSecrets(fmt.Sprint(v...)), nil)
+	logMessage(INFO, b.component, redactMessage(fmt.Sprint(v...)), nil)
 }
 
 // Warn logs warning messages
 func (b *Logger) Warn(v ...any) {
-	logMessage(WARN, b.component, maskSecrets(fmt.Sprint(v...)), nil)
+	logMessage(WARN, b.component, redactMessage(fmt.Sprint(v...)), nil)
 }
 
 // Error logs error messages
 func (b *Logger) Error(v ...any) {
-	logMessage(ERROR, b.component, maskSecrets(fmt.Sprint(v...)), nil)
+	logMessage(ERROR, b.component, redactMessage(fmt.Sprint(v...)), nil)
 }
 
 // Debugf logs formatted debug messages
 func (b *Logger) Debugf(format string, v ...any) {
-	logMessage(DEBUG, b.component, maskSecrets(fmt.Sprintf(format, v...)), nil)
+	logMessage(DEBUG, b.component, redactMessage(fmt.Sprintf(format, v...)), nil)
 }
 
 // Infof logs formatted info messages
 func (b *Logger) Infof(format string, v ...any) {
-	logMessage(INFO, b.component, maskSecrets(fmt.Sprintf(format, v...)), nil)
+	logMessage(INFO, b.component, redactMessage(fmt.Sprintf(format, v...)), nil)
 }
 
 // Warnf logs formatted warning messages
 func (b *Logger) Warnf(format string, v ...any) {
-	logMessage(WARN, b.component, maskSecrets(fmt.Sprintf(format, v...)), nil)
+	logMessage(WARN, b.component, redactMessage(fmt.Sprintf(format, v...)), nil)
 }
 
 // Warningf logs formatted warning messages
 func (b *Logger) Warningf(format string, v ...any) {
-	logMessage(WARN, b.component, maskSecrets(fmt.Sprintf(format, v...)), nil)
+	logMessage(WARN, b.component, redactMessage(fmt.Sprintf(format, v...)), nil)
 }
 
 // Errorf logs formatted error messages
 func (b *Logger) Errorf(format string, v ...any) {
-	logMessage(ERROR, b.component, maskSecrets(fmt.Sprintf(format, v...)), nil)
+	logMessage(ERROR, b.component, redactMessage(fmt.Sprintf(format, v...)), nil)
 }
 
 // Fatalf logs formatted fatal messages and exits
 func (b *Logger) Fatalf(format string, v ...any) {
-	logMessage(FATAL, b.component, maskSecrets(fmt.Sprintf(format, v...)), nil)
+	logMessage(FATAL, b.component, redactMessage(fmt.Sprintf(format, v...)), nil)
 }
 
 // Log logs a message at a given level with caller information
@@ -88,7 +105,7 @@ func (b *Logger) Log(msgL, caller int, format string, a ...any) {
 			level = lvl
 		}
 	}
-	logMessage(level, b.component, maskSecrets(fmt.Sprintf(format, a...)), nil)
+	logMessage(level, b.component, redactMessage(fmt.Sprintf(format, a...)), nil)
 }
 
 // Sync flushes log buffer (no-op for this implementation)
