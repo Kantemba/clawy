@@ -16,6 +16,7 @@ type (
 	MCPManager               = integrationtools.MCPManager
 	MCPTool                  = integrationtools.MCPTool
 	FindSkillsTool           = integrationtools.FindSkillsTool
+	FindSkillTool            = integrationtools.FindSkillTool
 	InstallSkillTool         = integrationtools.InstallSkillTool
 	MessageTool              = integrationtools.MessageTool
 	ReactionTool             = integrationtools.ReactionTool
@@ -44,6 +45,10 @@ func NewMCPTool(manager MCPManager, serverName string, tool *mcp.Tool) *MCPTool 
 
 func NewFindSkillsTool(registryMgr *skills.RegistryManager, cache *skills.SearchCache) *FindSkillsTool {
 	return integrationtools.NewFindSkillsTool(registryMgr, cache)
+}
+
+func NewFindSkillTool(registryMgr *skills.RegistryManager, workspace string, cache *skills.SearchCache) *FindSkillTool {
+	return integrationtools.NewFindSkillTool(registryMgr, workspace, cache)
 }
 
 func NewInstallSkillTool(registryMgr *skills.RegistryManager, workspace string) *InstallSkillTool {

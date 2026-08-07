@@ -70,6 +70,9 @@ func TestHandleListTools(t *testing.T) {
 	if gotTools["find_skills"].Status != "enabled" {
 		t.Fatalf("find_skills status = %q, want enabled", gotTools["find_skills"].Status)
 	}
+	if gotTools["find_skill"].Status != "enabled" {
+		t.Fatalf("find_skill status = %q, want enabled", gotTools["find_skill"].Status)
+	}
 	if gotTools["tool_search_tool_regex"].Status != "enabled" {
 		t.Fatalf("tool_search_tool_regex status = %q, want enabled", gotTools["tool_search_tool_regex"].Status)
 	}

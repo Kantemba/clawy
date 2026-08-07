@@ -143,6 +143,12 @@ var toolCatalog = []toolCatalogEntry{
 		ConfigKey:   "find_skills",
 	},
 	{
+		Name:        "find_skill",
+		Description: "Discover and install a skill from registries in one step.",
+		Category:    "skills",
+		ConfigKey:   "find_skill",
+	},
+	{
 		Name:        "install_skill",
 		Description: "Install a skill into the current workspace from a registry.",
 		Category:    "skills",
@@ -246,7 +252,7 @@ func buildToolSupport(cfg *config.Config) []toolSupportItem {
 		reasonCode := ""
 
 		switch entry.Name {
-		case "find_skills", "install_skill":
+		case "find_skills", "find_skill", "install_skill":
 			if cfg.Tools.IsToolEnabled(entry.ConfigKey) {
 				if cfg.Tools.IsToolEnabled("skills") {
 					status = "enabled"
@@ -360,6 +366,11 @@ func applyToolState(cfg *config.Config, toolName string, enabled bool) error {
 		cfg.Tools.SendFile.Enabled = enabled
 	case "find_skills":
 		cfg.Tools.FindSkills.Enabled = enabled
+		if enabled {
+			cfg.Tools.Skills.Enabled = true
+		}
+	case "find_skill":
+		cfg.Tools.FindSkill.Enabled = enabled
 		if enabled {
 			cfg.Tools.Skills.Enabled = true
 		}

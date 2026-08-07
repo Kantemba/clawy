@@ -459,6 +459,9 @@ func computeConfigSignature(cfg *config.Config) string {
 	if cfg.Tools.FindSkills.Enabled {
 		toolSignatures = append(toolSignatures, "find_skills")
 	}
+	if cfg.Tools.FindSkill.Enabled {
+		toolSignatures = append(toolSignatures, "find_skill")
+	}
 	if cfg.Tools.InstallSkill.Enabled {
 		toolSignatures = append(toolSignatures, "install_skill")
 	}

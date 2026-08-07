@@ -445,10 +445,13 @@ func DefaultConfig() *Config {
 			EditFile: ToolConfig{
 				Enabled: true,
 			},
-			FindSkills: ToolConfig{
-				Enabled: true,
-			},
-			I2C: ToolConfig{
+		FindSkills: ToolConfig{
+			Enabled: true,
+		},
+		FindSkill: ToolConfig{
+			Enabled: true,
+		},
+		I2C: ToolConfig{
 				Enabled: false, // Hardware tool - Linux only
 			},
 			InstallSkill: ToolConfig{

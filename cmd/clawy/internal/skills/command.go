@@ -63,6 +63,7 @@ func NewSkillsCommand() *cobra.Command {
 		newListBuiltinCommand(),
 		newRemoveCommand(),
 		newSearchCommand(),
+		newFindCommand(),
 		newShowCommand(loaderFn),
 	)
 

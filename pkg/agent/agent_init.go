@@ -268,16 +268,22 @@ func registerSharedTools(
 		// Skill discovery and installation tools
 		skills_enabled := cfg.Tools.IsToolEnabled("skills")
 		find_skills_enable := cfg.Tools.IsToolEnabled("find_skills")
+		find_skill_enable := cfg.Tools.IsToolEnabled("find_skill")
 		install_skills_enable := cfg.Tools.IsToolEnabled("install_skill")
-		if skills_enabled && (find_skills_enable || install_skills_enable) {
+		if skills_enabled && (find_skills_enable || find_skill_enable || install_skills_enable) {
 			registryMgr := skills.NewRegistryManagerFromToolsConfig(cfg.Tools.Skills)
 
+			searchCache := skills.NewSearchCache(
+				cfg.Tools.Skills.SearchCache.MaxSize,
+				time.Duration(cfg.Tools.Skills.SearchCache.TTLSeconds)*time.Second,
+			)
+
 			if find_skills_enable {
-				searchCache := skills.NewSearchCache(
-					cfg.Tools.Skills.SearchCache.MaxSize,
-					time.Duration(cfg.Tools.Skills.SearchCache.TTLSeconds)*time.Second,
-				)
 				agent.Tools.Register(tools.NewFindSkillsTool(registryMgr, searchCache))
+			}
+
+			if find_skill_enable {
+				agent.Tools.Register(tools.NewFindSkillTool(registryMgr, agent.Workspace, searchCache))
 			}
 
 			if install_skills_enable {
