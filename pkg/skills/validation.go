@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/sipeed/picoclaw/pkg/utils"
+	"github.com/Kantemba/clawy/pkg/utils"
 )
 
 func ValidateSkillName(name string) error {

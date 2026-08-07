@@ -1,4 +1,4 @@
-// PicoClaw - Ultra-lightweight personal AI agent
+// Clawy - Ultra-lightweight personal AI agent
 
 package agent
 
@@ -8,18 +8,18 @@ import (
 	"sync"
 	"time"
 
-	"github.com/sipeed/picoclaw/pkg/agent/interfaces"
-	"github.com/sipeed/picoclaw/pkg/audio/tts"
-	"github.com/sipeed/picoclaw/pkg/bus"
-	"github.com/sipeed/picoclaw/pkg/channels"
-	"github.com/sipeed/picoclaw/pkg/commands"
-	"github.com/sipeed/picoclaw/pkg/config"
-	runtimeevents "github.com/sipeed/picoclaw/pkg/events"
-	"github.com/sipeed/picoclaw/pkg/logger"
-	"github.com/sipeed/picoclaw/pkg/providers"
-	"github.com/sipeed/picoclaw/pkg/skills"
-	"github.com/sipeed/picoclaw/pkg/state"
-	"github.com/sipeed/picoclaw/pkg/tools"
+	"github.com/Kantemba/clawy/pkg/agent/interfaces"
+	"github.com/Kantemba/clawy/pkg/audio/tts"
+	"github.com/Kantemba/clawy/pkg/bus"
+	"github.com/Kantemba/clawy/pkg/channels"
+	"github.com/Kantemba/clawy/pkg/commands"
+	"github.com/Kantemba/clawy/pkg/config"
+	runtimeevents "github.com/Kantemba/clawy/pkg/events"
+	"github.com/Kantemba/clawy/pkg/logger"
+	"github.com/Kantemba/clawy/pkg/providers"
+	"github.com/Kantemba/clawy/pkg/skills"
+	"github.com/Kantemba/clawy/pkg/state"
+	"github.com/Kantemba/clawy/pkg/tools"
 )
 
 func NewAgentLoop(

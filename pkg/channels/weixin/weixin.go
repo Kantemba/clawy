@@ -9,11 +9,11 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/sipeed/picoclaw/pkg/bus"
-	"github.com/sipeed/picoclaw/pkg/channels"
-	"github.com/sipeed/picoclaw/pkg/config"
-	"github.com/sipeed/picoclaw/pkg/identity"
-	"github.com/sipeed/picoclaw/pkg/logger"
+	"github.com/Kantemba/clawy/pkg/bus"
+	"github.com/Kantemba/clawy/pkg/channels"
+	"github.com/Kantemba/clawy/pkg/config"
+	"github.com/Kantemba/clawy/pkg/identity"
+	"github.com/Kantemba/clawy/pkg/logger"
 )
 
 // WeixinChannel is the Weixin channel implementation over Tencent iLink REST API.

@@ -6,7 +6,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/sipeed/picoclaw/pkg/config"
+	"github.com/Kantemba/clawy/pkg/config"
 )
 
 func ResolveTargetHome(override string) (string, error) {

@@ -8,11 +8,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/sipeed/picoclaw/pkg/config"
-	runtimeevents "github.com/sipeed/picoclaw/pkg/events"
-	"github.com/sipeed/picoclaw/pkg/evolution"
-	"github.com/sipeed/picoclaw/pkg/logger"
-	"github.com/sipeed/picoclaw/pkg/providers"
+	"github.com/Kantemba/clawy/pkg/config"
+	runtimeevents "github.com/Kantemba/clawy/pkg/events"
+	"github.com/Kantemba/clawy/pkg/evolution"
+	"github.com/Kantemba/clawy/pkg/logger"
+	"github.com/Kantemba/clawy/pkg/providers"
 )
 
 type evolutionBridge struct {

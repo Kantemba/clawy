@@ -3,8 +3,8 @@ package agent
 import (
 	"testing"
 
-	"github.com/sipeed/picoclaw/pkg/config"
-	"github.com/sipeed/picoclaw/pkg/providers"
+	"github.com/Kantemba/clawy/pkg/config"
+	"github.com/Kantemba/clawy/pkg/providers"
 )
 
 func TestModelNameFromIdentityKey_LegacyProviderModel(t *testing.T) {

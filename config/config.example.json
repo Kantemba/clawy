@@ -2,7 +2,7 @@
   "version": 3,
   "agents": {
     "defaults": {
-      "workspace": "~/.picoclaw/workspace",
+      "workspace": "~/.clawy/workspace",
       "restrict_to_workspace": true,
       "model_name": "gpt-5.4",
       "max_tokens": 8192,
@@ -324,19 +324,17 @@
       "format": "plaintext",
       "brave": {
         "enabled": false,
-        "api_key": "YOUR_BRAVE_API_KEY",
         "api_keys": ["YOUR_BRAVE_API_KEY"],
         "max_results": 5
       },
       "tavily": {
         "enabled": false,
-        "api_key": "",
+        "api_keys": [],
         "base_url": "",
         "max_results": 0
       },
       "kagi": {
         "enabled": false,
-        "api_key": "",
         "api_keys": ["YOUR_KAGI_API_KEY"],
         "base_url": "https://kagi.com/api/v1/search",
         "max_results": 5
@@ -358,7 +356,6 @@
       },
       "perplexity": {
         "enabled": false,
-        "api_key": "pplx-xxx",
         "api_keys": ["pplx-xxx"],
         "max_results": 5
       },

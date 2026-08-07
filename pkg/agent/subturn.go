@@ -8,11 +8,11 @@ import (
 	"sync/atomic"
 	"time"
 
-	runtimeevents "github.com/sipeed/picoclaw/pkg/events"
-	"github.com/sipeed/picoclaw/pkg/logger"
-	"github.com/sipeed/picoclaw/pkg/providers"
-	"github.com/sipeed/picoclaw/pkg/providers/messageutil"
-	"github.com/sipeed/picoclaw/pkg/tools"
+	runtimeevents "github.com/Kantemba/clawy/pkg/events"
+	"github.com/Kantemba/clawy/pkg/logger"
+	"github.com/Kantemba/clawy/pkg/providers"
+	"github.com/Kantemba/clawy/pkg/providers/messageutil"
+	"github.com/Kantemba/clawy/pkg/tools"
 )
 
 // ====================== Config & Constants ======================

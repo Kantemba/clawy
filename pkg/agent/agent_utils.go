@@ -1,4 +1,4 @@
-// PicoClaw - Ultra-lightweight personal AI agent
+// Clawy - Ultra-lightweight personal AI agent
 
 package agent
 
@@ -10,13 +10,13 @@ import (
 	"strings"
 	"time"
 
-	"github.com/sipeed/picoclaw/pkg/bus"
-	"github.com/sipeed/picoclaw/pkg/commands"
-	"github.com/sipeed/picoclaw/pkg/config"
-	"github.com/sipeed/picoclaw/pkg/logger"
-	"github.com/sipeed/picoclaw/pkg/providers"
-	"github.com/sipeed/picoclaw/pkg/session"
-	"github.com/sipeed/picoclaw/pkg/utils"
+	"github.com/Kantemba/clawy/pkg/bus"
+	"github.com/Kantemba/clawy/pkg/commands"
+	"github.com/Kantemba/clawy/pkg/config"
+	"github.com/Kantemba/clawy/pkg/logger"
+	"github.com/Kantemba/clawy/pkg/providers"
+	"github.com/Kantemba/clawy/pkg/session"
+	"github.com/Kantemba/clawy/pkg/utils"
 )
 
 func outboundContextFromInbound(

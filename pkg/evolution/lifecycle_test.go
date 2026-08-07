@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/sipeed/picoclaw/pkg/evolution"
+	"github.com/Kantemba/clawy/pkg/evolution"
 )
 
 func TestStore_SaveAndLoadProfile(t *testing.T) {

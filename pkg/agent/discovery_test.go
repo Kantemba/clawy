@@ -4,8 +4,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/sipeed/picoclaw/pkg/bus"
-	"github.com/sipeed/picoclaw/pkg/config"
+	"github.com/Kantemba/clawy/pkg/bus"
+	"github.com/Kantemba/clawy/pkg/config"
 )
 
 func TestAgentRegistry_ListAgentsBuildsStructuredDescriptors(t *testing.T) {

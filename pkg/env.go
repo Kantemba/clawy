@@ -5,8 +5,8 @@ package pkg
 const (
 	Logo = "🦞"
 	// AppName is the name of the app
-	AppName = "PicoClaw"
+	AppName = "Clawy"
 
-	DefaultPicoClawHome = ".picoclaw"
+	DefaultClawyHome = ".clawy"
 	WorkspaceName       = "workspace"
 )

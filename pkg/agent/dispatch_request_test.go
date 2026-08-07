@@ -3,9 +3,9 @@ package agent
 import (
 	"testing"
 
-	"github.com/sipeed/picoclaw/pkg/bus"
-	"github.com/sipeed/picoclaw/pkg/routing"
-	"github.com/sipeed/picoclaw/pkg/session"
+	"github.com/Kantemba/clawy/pkg/bus"
+	"github.com/Kantemba/clawy/pkg/routing"
+	"github.com/Kantemba/clawy/pkg/session"
 )
 
 func TestNormalizeProcessOptions_PopulatesDispatchFromLegacyFields(t *testing.T) {

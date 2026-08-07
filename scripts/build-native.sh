@@ -1,5 +1,5 @@
 #!/bin/bash
-# Build the picoclaw binary natively (no Docker / no cross-compile).
+# Build the clawy binary natively (no Docker / no cross-compile).
 # Mirrors `make build`.
 
 set -e
@@ -7,10 +7,10 @@ set -e
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT_DIR"
 
-BINARY_NAME=picoclaw
+BINARY_NAME=clawy
 BUILD_DIR=build
 CMD_DIR=cmd/${BINARY_NAME}
-CONFIG_PKG=github.com/sipeed/picoclaw/pkg/config
+CONFIG_PKG=github.com/Kantemba/clawy/pkg/config
 GO_BUILD_TAGS=${GO_BUILD_TAGS:-goolm,stdjson}
 EXT=
 PLATFORM="$(go env GOHOSTOS)"

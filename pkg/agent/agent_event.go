@@ -1,11 +1,11 @@
-// PicoClaw - Ultra-lightweight personal AI agent
+// Clawy - Ultra-lightweight personal AI agent
 
 package agent
 
 import (
 	"fmt"
 
-	runtimeevents "github.com/sipeed/picoclaw/pkg/events"
+	runtimeevents "github.com/Kantemba/clawy/pkg/events"
 )
 
 func (al *AgentLoop) newTurnEventScope(agentID, sessionKey string, turnCtx *TurnContext) turnEventScope {

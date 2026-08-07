@@ -3,8 +3,8 @@ package integrationtools
 import (
 	"context"
 
-	"github.com/sipeed/picoclaw/pkg/session"
-	toolshared "github.com/sipeed/picoclaw/pkg/tools/shared"
+	"github.com/Kantemba/clawy/pkg/session"
+	toolshared "github.com/Kantemba/clawy/pkg/tools/shared"
 )
 
 type (

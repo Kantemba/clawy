@@ -11,10 +11,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/sipeed/picoclaw/pkg/logger"
-	"github.com/sipeed/picoclaw/pkg/netbind"
-	"github.com/sipeed/picoclaw/web/backend/launcherconfig"
-	"github.com/sipeed/picoclaw/web/backend/middleware"
+	"github.com/Kantemba/clawy/pkg/logger"
+	"github.com/Kantemba/clawy/pkg/netbind"
+	"github.com/Kantemba/clawy/web/backend/launcherconfig"
+	"github.com/Kantemba/clawy/web/backend/middleware"
 )
 
 func TestShouldEnableLauncherFileLogging(t *testing.T) {

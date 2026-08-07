@@ -14,14 +14,14 @@ import (
 	"strings"
 	"time"
 
-	"github.com/sipeed/picoclaw/pkg/config"
-	"github.com/sipeed/picoclaw/pkg/logger"
+	"github.com/Kantemba/clawy/pkg/config"
+	"github.com/Kantemba/clawy/pkg/logger"
 )
 
 const (
 	wecomFlowTTL             = 5 * time.Minute
 	wecomFlowGCAge           = 30 * time.Minute
-	wecomQRSourceID          = "picoclaw"
+	wecomQRSourceID          = "clawy"
 	wecomQRGenerateEndpoint  = "https://work.weixin.qq.com/ai/qc/generate"
 	wecomQRQueryEndpoint     = "https://work.weixin.qq.com/ai/qc/query_result"
 	wecomQRHTTPTimeout       = 15 * time.Second

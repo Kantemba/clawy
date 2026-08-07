@@ -1,16 +1,16 @@
 //go:build azidentity
 
-// PicoClaw - Ultra-lightweight personal AI agent
+// Clawy - Ultra-lightweight personal AI agent
 // License: MIT
 //
-// Copyright (c) 2026 PicoClaw contributors
+// Copyright (c) 2026 Clawy contributors
 
 package providers
 
 import (
 	"testing"
 
-	"github.com/sipeed/picoclaw/pkg/config"
+	"github.com/Kantemba/clawy/pkg/config"
 )
 
 // With the azidentity build tag, an azure config with no api_key must succeed

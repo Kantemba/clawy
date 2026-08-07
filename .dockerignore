@@ -3,7 +3,7 @@
 .git
 .gitignore
 build/
-.picoclaw/
+.clawy/
 config/
 .env
 .env.example

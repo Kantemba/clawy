@@ -1,12 +1,12 @@
-// PicoClaw - Ultra-lightweight personal AI agent
+// Clawy - Ultra-lightweight personal AI agent
 
 package agent
 
 import (
-	"github.com/sipeed/picoclaw/pkg/agent/interfaces"
-	"github.com/sipeed/picoclaw/pkg/config"
-	"github.com/sipeed/picoclaw/pkg/media"
-	"github.com/sipeed/picoclaw/pkg/providers"
+	"github.com/Kantemba/clawy/pkg/agent/interfaces"
+	"github.com/Kantemba/clawy/pkg/config"
+	"github.com/Kantemba/clawy/pkg/media"
+	"github.com/Kantemba/clawy/pkg/providers"
 )
 
 // Pipeline holds the runtime dependencies used by Pipeline methods.

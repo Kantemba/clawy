@@ -19,10 +19,10 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/sipeed/picoclaw/pkg/bus"
-	"github.com/sipeed/picoclaw/pkg/channels"
-	"github.com/sipeed/picoclaw/pkg/config"
-	"github.com/sipeed/picoclaw/pkg/media"
+	"github.com/Kantemba/clawy/pkg/bus"
+	"github.com/Kantemba/clawy/pkg/channels"
+	"github.com/Kantemba/clawy/pkg/config"
+	"github.com/Kantemba/clawy/pkg/media"
 )
 
 const testToken = "1234567890:aaaabbbbaaaabbbbaaaabbbbaaaabbbbccc"
@@ -1417,7 +1417,7 @@ func TestHandleMessage_ReplyToOwnBotMessage_UsesAssistantRole(t *testing.T) {
 					ID:        42,
 					IsBot:     true,
 					FirstName: "Pico",
-					Username:  "afjcjsbx_picoclaw_bot",
+					Username:  "afjcjsbx_clawy_bot",
 				}), nil
 			}
 			t.Fatalf("unexpected API call: %s", url)
@@ -1446,7 +1446,7 @@ func TestHandleMessage_ReplyToOwnBotMessage_UsesAssistantRole(t *testing.T) {
 				ID:        42,
 				IsBot:     true,
 				FirstName: "Pico",
-				Username:  "afjcjsbx_picoclaw_bot",
+				Username:  "afjcjsbx_clawy_bot",
 			},
 		},
 	}
@@ -1459,7 +1459,7 @@ func TestHandleMessage_ReplyToOwnBotMessage_UsesAssistantRole(t *testing.T) {
 	assert.Equal(t, "101", inbound.Context.ReplyToMessageID)
 	assert.Equal(
 		t,
-		"[quoted assistant message from afjcjsbx_picoclaw_bot]: Fatto! Ho creato il file notizie_2026_03_28.md\n\nti ricordi questo file?",
+		"[quoted assistant message from afjcjsbx_clawy_bot]: Fatto! Ho creato il file notizie_2026_03_28.md\n\nti ricordi questo file?",
 		inbound.Content,
 	)
 }

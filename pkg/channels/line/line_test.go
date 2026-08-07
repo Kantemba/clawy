@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/sipeed/picoclaw/pkg/config"
+	"github.com/Kantemba/clawy/pkg/config"
 )
 
 func TestWebhookRejectsOversizedBody(t *testing.T) {

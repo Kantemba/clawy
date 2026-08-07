@@ -13,10 +13,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/sipeed/picoclaw/pkg/logger"
-	"github.com/sipeed/picoclaw/pkg/providers/common"
-	"github.com/sipeed/picoclaw/pkg/providers/messageutil"
-	"github.com/sipeed/picoclaw/pkg/providers/protocoltypes"
+	"github.com/Kantemba/clawy/pkg/logger"
+	"github.com/Kantemba/clawy/pkg/providers/common"
+	"github.com/Kantemba/clawy/pkg/providers/messageutil"
+	"github.com/Kantemba/clawy/pkg/providers/protocoltypes"
 )
 
 type (

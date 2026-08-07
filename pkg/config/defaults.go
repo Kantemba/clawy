@@ -1,7 +1,7 @@
-// PicoClaw - Ultra-lightweight personal AI agent
+// Clawy - Ultra-lightweight personal AI agent
 // License: MIT
 //
-// Copyright (c) 2026 PicoClaw contributors
+// Copyright (c) 2026 Clawy contributors
 
 package config
 
@@ -9,10 +9,10 @@ import (
 	"encoding/json"
 	"path/filepath"
 
-	"github.com/sipeed/picoclaw/pkg"
+	"github.com/Kantemba/clawy/pkg"
 )
 
-// DefaultConfig returns the default configuration for PicoClaw.
+// DefaultConfig returns the default configuration for Clawy.
 func DefaultConfig() *Config {
 	workspacePath := filepath.Join(GetHome(), pkg.WorkspaceName)
 
@@ -553,7 +553,7 @@ func defaultChannels() ChannelsConfig {
 			"group_trigger": map[string]any{"mention_only": true},
 			"settings": map[string]any{
 				"email":        "@nine.testrun.org",
-				"display_name": "PicoClaw Bot",
+				"display_name": "Clawy Bot",
 			},
 		},
 		"line": map[string]any{
@@ -595,7 +595,7 @@ func defaultChannels() ChannelsConfig {
 			"settings": map[string]any{
 				"server":   "",
 				"tls":      true,
-				"nick":     "picoclaw",
+				"nick":     "clawy",
 				"channels": []string{},
 			},
 		},

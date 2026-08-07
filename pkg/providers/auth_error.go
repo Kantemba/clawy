@@ -5,7 +5,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/sipeed/picoclaw/pkg/providers/common"
+	"github.com/Kantemba/clawy/pkg/providers/common"
 )
 
 type AuthErrorKind string

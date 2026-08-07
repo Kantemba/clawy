@@ -1,0 +1,9 @@
+[Desktop Entry]
+Name=Clawy Launcher
+Comment=Web-based configuration and management UI for Clawy
+Exec=clawy-launcher
+Icon=clawy-launcher
+Terminal=true
+Type=Application
+Categories=Utility;Network;
+Keywords=clawy;ai;agent;bot;

@@ -11,11 +11,11 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/sipeed/picoclaw/pkg/bus"
-	"github.com/sipeed/picoclaw/pkg/config"
-	"github.com/sipeed/picoclaw/pkg/identity"
-	"github.com/sipeed/picoclaw/pkg/logger"
-	"github.com/sipeed/picoclaw/pkg/media"
+	"github.com/Kantemba/clawy/pkg/bus"
+	"github.com/Kantemba/clawy/pkg/config"
+	"github.com/Kantemba/clawy/pkg/identity"
+	"github.com/Kantemba/clawy/pkg/logger"
+	"github.com/Kantemba/clawy/pkg/media"
 )
 
 var (
@@ -124,7 +124,7 @@ func NewBaseChannel(
 	}
 
 	// Security Audit: Check for open-by-default (unsecured) channels.
-	// PicoClaw aims to be secure-by-default. If allow_from is empty, the bot
+	// Clawy aims to be secure-by-default. If allow_from is empty, the bot
 	// currently defaults to accepting messages from ANYONE. To explicitly
 	// acknowledge and permit this (e.g. for a public bot), use ["*"].
 	if len(bc.allowList) == 0 {

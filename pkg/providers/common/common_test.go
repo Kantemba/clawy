@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/sipeed/picoclaw/pkg/providers/protocoltypes"
+	"github.com/Kantemba/clawy/pkg/providers/protocoltypes"
 )
 
 // --- NewHTTPClient tests ---

@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/sipeed/picoclaw/pkg/providers/common"
+	"github.com/Kantemba/clawy/pkg/providers/common"
 )
 
 func TestFormatProcessingError_InvalidAPIKey(t *testing.T) {

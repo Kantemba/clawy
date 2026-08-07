@@ -5,9 +5,9 @@ import (
 	"slices"
 	"testing"
 
-	"github.com/sipeed/picoclaw/pkg/bus"
-	"github.com/sipeed/picoclaw/pkg/config"
-	"github.com/sipeed/picoclaw/pkg/providers"
+	"github.com/Kantemba/clawy/pkg/bus"
+	"github.com/Kantemba/clawy/pkg/config"
+	"github.com/Kantemba/clawy/pkg/providers"
 )
 
 type mockRegistryProvider struct{}
@@ -30,7 +30,7 @@ func testCfg(agents []config.AgentConfig) *config.Config {
 	return &config.Config{
 		Agents: config.AgentsConfig{
 			Defaults: config.AgentDefaults{
-				Workspace:         "/tmp/picoclaw-test-registry",
+				Workspace:         "/tmp/clawy-test-registry",
 				ModelName:         "gpt-4",
 				MaxTokens:         8192,
 				MaxToolIterations: 10,

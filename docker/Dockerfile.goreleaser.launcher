@@ -4,8 +4,8 @@ ARG TARGETPLATFORM
 
 RUN apk add --no-cache ca-certificates tzdata
 
-COPY $TARGETPLATFORM/picoclaw /usr/local/bin/picoclaw
-COPY $TARGETPLATFORM/picoclaw-launcher /usr/local/bin/picoclaw-launcher
+COPY $TARGETPLATFORM/clawy /usr/local/bin/clawy
+COPY $TARGETPLATFORM/clawy-launcher /usr/local/bin/clawy-launcher
 
-ENTRYPOINT ["picoclaw-launcher"]
+ENTRYPOINT ["clawy-launcher"]
 CMD ["-console", "-public", "-no-browser"]

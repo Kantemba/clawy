@@ -1,35 +1,35 @@
 services:
   # ─────────────────────────────────────────────
-  # PicoClaw Agent (one-shot query)
-  #   docker compose -f docker/docker-compose.yml run --rm picoclaw-agent -m "Hello"
+  # Clawy Agent (one-shot query)
+  #   docker compose -f docker/docker-compose.yml run --rm clawy-agent -m "Hello"
   # ─────────────────────────────────────────────
-  picoclaw-agent:
+  clawy-agent:
     build:
       context: ..
       dockerfile: docker/Dockerfile
-    image: docker.io/sipeed/picoclaw:latest
-    container_name: picoclaw-agent
+    image: docker.io/Kantemba/clawy:latest
+    container_name: clawy-agent
     profiles:
       - agent
     # Uncomment to access host network; leave commented unless needed.
     #extra_hosts:
     #  - "host.docker.internal:host-gateway"
     volumes:
-      - ./data:/root/.picoclaw
-    entrypoint: ["picoclaw", "agent"]
+      - ./data:/root/.clawy
+    entrypoint: ["clawy", "agent"]
     stdin_open: true
     tty: true
 
   # ─────────────────────────────────────────────
-  # PicoClaw Gateway (Long-running Bot)
+  # Clawy Gateway (Long-running Bot)
   #   docker compose -f docker/docker-compose.yml --profile gateway up
   # ─────────────────────────────────────────────
-  picoclaw-gateway:
+  clawy-gateway:
     build:
       context: ..
       dockerfile: docker/Dockerfile
-    image: docker.io/sipeed/picoclaw:latest
-    container_name: picoclaw-gateway
+    image: docker.io/Kantemba/clawy:latest
+    container_name: clawy-gateway
     restart: unless-stopped
     profiles:
       - gateway
@@ -37,28 +37,28 @@ services:
     #extra_hosts:
     #  - "host.docker.internal:host-gateway"
     volumes:
-      - ./data:/root/.picoclaw
+      - ./data:/root/.clawy
 
   # ─────────────────────────────────────────────
-  # PicoClaw Launcher (Web Console + Gateway)
+  # Clawy Launcher (Web Console + Gateway)
   #   docker compose -f docker/docker-compose.yml --profile launcher up
   # ─────────────────────────────────────────────
-  picoclaw-launcher:
+  clawy-launcher:
     build:
       context: ..
       dockerfile: docker/Dockerfile.launcher
-    image: docker.io/sipeed/picoclaw:launcher
-    container_name: picoclaw-launcher
+    image: docker.io/Kantemba/clawy:launcher
+    container_name: clawy-launcher
     restart: unless-stopped
     profiles:
       - launcher
     environment:
-      - PICOCLAW_GATEWAY_HOST=0.0.0.0
+      - CLAWY_GATEWAY_HOST=0.0.0.0
       # Set a fixed dashboard token instead of a random one each restart.
       # If not set, a random token is generated and printed to the console on startup.
-      #- PICOCLAW_LAUNCHER_TOKEN=your-secret-token-here
+      #- CLAWY_LAUNCHER_TOKEN=your-secret-token-here
     ports:
       - "18800:18800"
       - "18790:18790"
     volumes:
-      - ./data:/root/.picoclaw
+      - ./data:/root/.clawy

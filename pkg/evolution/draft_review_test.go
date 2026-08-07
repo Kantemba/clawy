@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/sipeed/picoclaw/pkg/evolution"
+	"github.com/Kantemba/clawy/pkg/evolution"
 )
 
 func TestReviewDraft_QuarantinesInvalidDraft(t *testing.T) {

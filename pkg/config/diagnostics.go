@@ -353,6 +353,11 @@ func collectUnknownJSONFields(raw any, targetType reflect.Type, path string) []s
 		fieldMap := jsonFieldTypeMap(targetType)
 		var issues []string
 		for key, value := range obj {
+			// Keys prefixed with "_" are inline comments (e.g. "_comment") and
+			// are intentionally ignored by the schema checker.
+			if strings.HasPrefix(key, "_") {
+				continue
+			}
 			fieldType, exists := fieldMap[key]
 			fieldPath := appendJSONPath(path, key)
 			if !exists {

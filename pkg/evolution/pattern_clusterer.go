@@ -11,7 +11,7 @@ import (
 	"time"
 	"unicode"
 
-	"github.com/sipeed/picoclaw/pkg/providers"
+	"github.com/Kantemba/clawy/pkg/providers"
 )
 
 type PatternClusterer interface {

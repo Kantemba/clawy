@@ -16,10 +16,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/sipeed/picoclaw/pkg/config"
-	"github.com/sipeed/picoclaw/pkg/fileutil"
-	"github.com/sipeed/picoclaw/pkg/skills"
-	"github.com/sipeed/picoclaw/pkg/utils"
+	"github.com/Kantemba/clawy/pkg/config"
+	"github.com/Kantemba/clawy/pkg/fileutil"
+	"github.com/Kantemba/clawy/pkg/skills"
+	"github.com/Kantemba/clawy/pkg/utils"
 )
 
 const defaultInstallSkillRegistry = "github"
@@ -872,7 +872,7 @@ func importUploadedMarkdownSkill(cfg *config.Config, filename string, content []
 }
 
 func importUploadedSkillArchive(cfg *config.Config, filename string, content []byte) (*skillSupportItem, int, error) {
-	tmpDir, tempDirErr := os.MkdirTemp("", "picoclaw-skill-import-*")
+	tmpDir, tempDirErr := os.MkdirTemp("", "clawy-skill-import-*")
 	if tempDirErr != nil {
 		return nil, http.StatusInternalServerError, fmt.Errorf("Failed to create temp directory: %v", tempDirErr)
 	}

@@ -13,10 +13,10 @@ import (
 
 	pahomqtt "github.com/eclipse/paho.mqtt.golang"
 
-	"github.com/sipeed/picoclaw/pkg/bus"
-	"github.com/sipeed/picoclaw/pkg/channels"
-	"github.com/sipeed/picoclaw/pkg/config"
-	"github.com/sipeed/picoclaw/pkg/logger"
+	"github.com/Kantemba/clawy/pkg/bus"
+	"github.com/Kantemba/clawy/pkg/channels"
+	"github.com/Kantemba/clawy/pkg/config"
+	"github.com/Kantemba/clawy/pkg/logger"
 )
 
 // mqttPayload is the JSON payload for both inbound and outbound messages.
@@ -52,7 +52,7 @@ func NewMQTTChannel(bc *config.Channel, cfg *config.MQTTSettings, b *bus.Message
 	if mqttClientID == "" {
 		var suffix [4]byte
 		_, _ = rand.Read(suffix[:])
-		mqttClientID = fmt.Sprintf("picoclaw-mqtt-%s-%s", cfg.AgentID, hex.EncodeToString(suffix[:]))
+		mqttClientID = fmt.Sprintf("clawy-mqtt-%s-%s", cfg.AgentID, hex.EncodeToString(suffix[:]))
 	}
 
 	return &MQTTChannel{
@@ -132,7 +132,7 @@ func (c *MQTTChannel) Start(ctx context.Context) error {
 func (c *MQTTChannel) topicPrefix() string {
 	p := strings.TrimRight(c.cfg.TopicPrefix, "/")
 	if p == "" {
-		return "/picoclaw"
+		return "/clawy"
 	}
 	return p
 }
