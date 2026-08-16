@@ -123,7 +123,7 @@ func CreateProviderFromConfig(cfg *config.ModelConfig) (LLMProvider, string, err
 		if apiBase == "" {
 			apiBase = getDefaultAPIBase(protocol)
 		}
-		provider := NewHTTPProviderWithMaxTokensFieldAndRequestTimeout(
+		provider := NewOpenAIProviderWithMaxTokensFieldAndRequestTimeout(
 			cfg.APIKey(),
 			apiBase,
 			cfg.Proxy,

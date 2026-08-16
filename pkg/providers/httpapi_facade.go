@@ -44,3 +44,21 @@ func NewHTTPProviderWithMaxTokensFieldAndRequestTimeout(
 		customHeaders,
 	)
 }
+
+func NewOpenAIProviderWithMaxTokensFieldAndRequestTimeout(
+	apiKey, apiBase, proxy, maxTokensField, userAgent string,
+	requestTimeoutSeconds int,
+	extraBody map[string]any,
+	customHeaders map[string]string,
+) *HTTPProvider {
+	return httpapi.NewOpenAIProviderWithMaxTokensFieldAndRequestTimeout(
+		apiKey,
+		apiBase,
+		proxy,
+		maxTokensField,
+		userAgent,
+		requestTimeoutSeconds,
+		extraBody,
+		customHeaders,
+	)
+}
