@@ -146,38 +146,13 @@ clawy --no-color status`,
 	return cmd
 }
 
-const (
-	colorBlue = "\033[1;38;2;62;93;185m"
-	colorRed  = "\033[1;38;2;213;70;70m"
-	banner    = "\r\n" +
-		colorBlue + "██████╗   ██╗       █████╗    ██╗    ██╗ " + colorRed + "██╗    ██╗\n" +
-		colorBlue + "██╔══██╗  ██║       ██╔══██╗  ██║ █╗ ██║ " + colorRed + "╚██╗ ██╔╝ \n" +
-		colorBlue + "██████╔╝  ██║       ███████║  ██║███╗██║ " + colorRed + " ╚████╔╝  \n" +
-		colorBlue + "██╔═══╝   ██║       ██╔══██║  ╚███╔███╔╝ " + colorRed + "  ╚═══╝   \n" +
-		colorBlue + "██║       ███████╗  ██║  ██║   ╚══╝╚══╝  " + colorRed + "   ██╗    \n" +
-		colorBlue + "╚═╝       ╚══════╝  ╚═╝  ╚═╝              " + colorRed + "   ╚═╝    \n" +
-		"\033[0m\r\n"
-	plainBanner = "\r\n" +
-		"██████╗   ██╗       █████╗    ██╗    ██╗ ██╗    ██╗\n" +
-		"██╔══██╗  ██║       ██╔══██╗  ██║ █╗ ██║ ╚██╗ ██╔╝ \n" +
-		"██████╔╝  ██║       ███████║  ██║███╗██║  ╚████╔╝  \n" +
-		"██╔═══╝   ██║       ██╔══██║  ╚███╔███╔╝   ╚═══╝   \n" +
-		"██║       ███████╗  ██║  ██║   ╚══╝╚══╝     ██╗    \n" +
-		"╚═╝       ╚══════╝  ╚═╝  ╚═╝                 ╚═╝    \n" +
-		"\r\n"
-)
-
 func main() {
 	// Initialize Termux SSL certificate detection before anything else
 	initTermuxSSL()
 
 	cliui.Init(earlyColorDisabled())
 
-	if earlyColorDisabled() {
-		fmt.Print(plainBanner)
-	} else {
-		fmt.Printf("%s", banner)
-	}
+	fmt.Printf("Clawy %s\n", config.FormatVersion())
 
 	tzEnv := os.Getenv("TZ")
 	if tzEnv != "" {
