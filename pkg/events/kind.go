@@ -103,6 +103,11 @@ const (
 	KindMCPToolCallStart Kind = "mcp.tool.call.start"
 	// KindMCPToolCallEnd is emitted when an MCP tool call ends.
 	KindMCPToolCallEnd Kind = "mcp.tool.call.end"
+
+	// KindMCPServerStarted is emitted when the native MCP server starts listening.
+	KindMCPServerStarted Kind = "mcp.server.started"
+	// KindMCPServerStopped is emitted when the native MCP server stops listening.
+	KindMCPServerStopped Kind = "mcp.server.stopped"
 )
 
 var knownKinds = []Kind{
@@ -152,6 +157,8 @@ var knownKinds = []Kind{
 	KindMCPToolDiscovered,
 	KindMCPToolCallStart,
 	KindMCPToolCallEnd,
+	KindMCPServerStarted,
+	KindMCPServerStopped,
 }
 
 // KnownKinds returns the runtime event kinds declared by this package.

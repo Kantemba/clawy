@@ -1280,6 +1280,11 @@ type MCPConfig struct {
 	MaxInlineTextChars int `json:"max_inline_text_chars,omitempty" env:"CLAWY_TOOLS_MCP_MAX_INLINE_TEXT_CHARS"`
 	// Servers is a map of server name to server configuration
 	Servers map[string]MCPServerConfig `json:"servers,omitempty"`
+	// Native is the native MCP server configuration. When enabled, Clawy exposes
+	// its own tools (and tools from upstream MCP servers) through an MCP server
+	// endpoint so that external MCP clients (e.g. Claude Desktop, Cursor) can
+	// discover and invoke them.
+	Native NativeServerConfig `json:"native,omitempty" envPrefix:"CLAWY_TOOLS_MCP_NATIVE_"`
 }
 
 const DefaultMCPMaxInlineTextChars = 16 * 1024
@@ -1289,6 +1294,80 @@ func (c *MCPConfig) GetMaxInlineTextChars() int {
 		return c.MaxInlineTextChars
 	}
 	return DefaultMCPMaxInlineTextChars
+}
+
+// NativeServerConfig configures the built-in MCP server that exposes Clawy's
+// tools to external MCP clients.
+type NativeServerConfig struct {
+	// Enabled controls whether the native MCP server starts.
+	Enabled bool `json:"enabled" env:"CLAWY_TOOLS_MCP_NATIVE_ENABLED"`
+	// Transport controls how the server listens for client connections.
+	// Accepted values: "stdio", "sse", "http" (alias "streamable-http").
+	// When empty the server is not started even if Enabled is true.
+	Transport string `json:"transport" env:"CLAWY_TOOLS_MCP_NATIVE_TRANSPORT"`
+	// Host is the bind address for SSE/HTTP transports.
+	// Ignored for stdio.
+	Host string `json:"host,omitempty" env:"CLAWY_TOOLS_MCP_NATIVE_HOST"`
+	// Port is the TCP port for SSE/HTTP transports.
+	// Ignored for stdio.
+	Port int `json:"port,omitempty" env:"CLAWY_TOOLS_MCP_NATIVE_PORT"`
+	// Path is the HTTP endpoint path for SSE/HTTP transports (e.g. "/mcp").
+	// Ignored for stdio.
+	Path string `json:"path,omitempty" env:"CLAWY_TOOLS_MCP_NATIVE_PATH"`
+}
+
+// NormalizeNativeTransport canonicalises transport names for the native MCP server.
+func NormalizeNativeTransport(transport string) string {
+	normalized := strings.ToLower(strings.TrimSpace(transport))
+	switch normalized {
+	case "streamable-http", "streamable_http", "streamablehttp":
+		return "http"
+	default:
+		return normalized
+	}
+}
+
+// EffectiveNativeTransport returns the normalised transport type or the
+// default when Type is empty. stdio is the natural default for process-based
+// MCP servers; SSE/HTTP defaults to "sse".
+func EffectiveNativeTransport(cfg NativeServerConfig) string {
+	if t := NormalizeNativeTransport(cfg.Transport); t != "" {
+		return t
+	}
+	if cfg.Host != "" || cfg.Port > 0 || cfg.Path != "" {
+		return "sse"
+	}
+	return "stdio"
+}
+
+// DefaultNativeServerPort is used when Port is unset and transport is SSE/HTTP.
+const DefaultNativeServerPort = 8080
+
+// EffectiveNativePort returns the port to bind for SSE/HTTP transport,
+// falling back to DefaultNativeServerPort when unset.
+func EffectiveNativePort(cfg NativeServerConfig) int {
+	if cfg.Port > 0 {
+		return cfg.Port
+	}
+	return DefaultNativeServerPort
+}
+
+// EffectiveNativeHost returns the host to bind for SSE/HTTP transport,
+// defaulting to "0.0.0.0" for local networking convenience.
+func EffectiveNativeHost(cfg NativeServerConfig) string {
+	if strings.TrimSpace(cfg.Host) != "" {
+		return cfg.Host
+	}
+	return "0.0.0.0"
+}
+
+// EffectiveNativePath returns the HTTP path for SSE/HTTP transport,
+// defaulting to "/mcp".
+func EffectiveNativePath(cfg NativeServerConfig) string {
+	if p := strings.TrimSpace(cfg.Path); p != "" {
+		return p
+	}
+	return "/mcp"
 }
 
 func LoadConfig(path string) (*Config, error) {

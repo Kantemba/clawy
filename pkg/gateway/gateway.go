@@ -46,6 +46,7 @@ import (
 	"github.com/Kantemba/clawy/pkg/health"
 	"github.com/Kantemba/clawy/pkg/heartbeat"
 	"github.com/Kantemba/clawy/pkg/logger"
+	"github.com/Kantemba/clawy/pkg/mcpx/server"
 	"github.com/Kantemba/clawy/pkg/media"
 	"github.com/Kantemba/clawy/pkg/netbind"
 	"github.com/Kantemba/clawy/pkg/pid"
@@ -71,7 +72,10 @@ type services struct {
 	ChannelManager   *channels.Manager
 	DeviceService    *devices.Service
 	HealthServer     *health.Server
+	NativeMCPServer  *mcpserver.Server
 	VoiceAgentCancel context.CancelFunc
+	nativeMCPCtx     context.Context
+	nativeMCPCancel  context.CancelFunc
 	manualReloadChan chan struct{}
 	reloading        atomic.Bool
 	authToken        string
@@ -529,6 +533,27 @@ func setupAndStartServices(
 		fmt.Println("✓ Device event service started")
 	}
 
+	// Native MCP server (exposes Clawy tools to external MCP clients).
+	if cfg.Tools.MCP.Native.Enabled {
+		srvCtx, srvCancel := context.WithCancel(context.Background())
+		runningServices.nativeMCPCtx = srvCtx
+		runningServices.nativeMCPCancel = srvCancel
+		factory := mcpserver.NewFactory(agentLoop).WithEventBus(agentLoop.RuntimeEventBus())
+		runningServices.NativeMCPServer = factory.NewServer()
+		if err := runningServices.NativeMCPServer.Start(srvCtx); err != nil {
+			return nil, fmt.Errorf("error starting native MCP server: %w", err)
+		}
+		transport := config.EffectiveNativeTransport(cfg.Tools.MCP.Native)
+		if transport == "stdio" {
+			fmt.Println("✓ Native MCP server started (stdio)")
+		} else {
+			host := config.EffectiveNativeHost(cfg.Tools.MCP.Native)
+			port := config.EffectiveNativePort(cfg.Tools.MCP.Native)
+			path := config.EffectiveNativePath(cfg.Tools.MCP.Native)
+			fmt.Printf("✓ Native MCP server started (%s) on http://%s:%d%s\n", transport, host, port, path)
+		}
+	}
+
 	return runningServices, nil
 }
 
@@ -543,6 +568,9 @@ func stopAndCleanupServices(runningServices *services, shutdownTimeout time.Dura
 	if runningServices.VoiceAgentCancel != nil {
 		runningServices.VoiceAgentCancel()
 	}
+	if runningServices.nativeMCPCancel != nil {
+		runningServices.nativeMCPCancel()
+	}
 	if runningServices.DeviceService != nil {
 		runningServices.DeviceService.Stop()
 	}
@@ -556,6 +584,13 @@ func stopAndCleanupServices(runningServices *services, shutdownTimeout time.Dura
 		if fms, ok := runningServices.MediaStore.(*media.FileMediaStore); ok {
 			fms.Stop()
 		}
+	}
+	if runningServices.NativeMCPServer != nil {
+		if err := runningServices.NativeMCPServer.Close(); err != nil {
+			logger.WarnCF("mcpserver", "Error closing native MCP server",
+				map[string]any{"error": err.Error()})
+		}
+		runningServices.NativeMCPServer = nil
 	}
 }
 
@@ -745,6 +780,37 @@ func restartServices(
 
 	ttsAvailable := tts.DetectTTS(cfg) != nil
 	logChannelVoiceCapabilities(runningServices.ChannelManager, transcriber != nil, ttsAvailable)
+
+	// Restart native MCP server after reload (so it picks up the new tool set).
+	if runningServices.nativeMCPCancel != nil {
+		runningServices.nativeMCPCancel()
+		runningServices.nativeMCPCancel = nil
+	}
+	if runningServices.NativeMCPServer != nil {
+		_ = runningServices.NativeMCPServer.Close()
+		runningServices.NativeMCPServer = nil
+	}
+	if cfg.Tools.MCP.Native.Enabled {
+		// stopAndCleanupServices already canceled and closed the old server;
+		// create a fresh one with the reloaded agent loop.
+		srvCtx, srvCancel := context.WithCancel(context.Background())
+		runningServices.nativeMCPCtx = srvCtx
+		runningServices.nativeMCPCancel = srvCancel
+		factory := mcpserver.NewFactory(al).WithEventBus(al.RuntimeEventBus())
+		runningServices.NativeMCPServer = factory.NewServer()
+		transport := config.EffectiveNativeTransport(cfg.Tools.MCP.Native)
+		if err := runningServices.NativeMCPServer.Start(srvCtx); err != nil {
+			logger.WarnCF("mcpserver", "Failed to restart native MCP server after reload",
+				map[string]any{"error": err.Error(), "transport": transport})
+		} else if transport == "stdio" {
+			fmt.Println("  ✓ Native MCP server restarted (stdio)")
+		} else {
+			host := config.EffectiveNativeHost(cfg.Tools.MCP.Native)
+			port := config.EffectiveNativePort(cfg.Tools.MCP.Native)
+			path := config.EffectiveNativePath(cfg.Tools.MCP.Native)
+			fmt.Printf("  ✓ Native MCP server restarted (%s) on http://%s:%d%s\n", transport, host, port, path)
+		}
+	}
 	// NOTE: PID file is written once at startup and not updated on reload.
 	// Changing the gateway listen address requires a full restart.
 

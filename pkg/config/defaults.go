@@ -438,6 +438,13 @@ func DefaultConfig() *Config {
 				},
 				MaxInlineTextChars: DefaultMCPMaxInlineTextChars,
 				Servers:            map[string]MCPServerConfig{},
+				Native: NativeServerConfig{
+					Enabled:   false,
+					Transport: "",
+					Host:      "0.0.0.0",
+					Port:      DefaultNativeServerPort,
+					Path:      "/mcp",
+				},
 			},
 			AppendFile: ToolConfig{
 				Enabled: true,
