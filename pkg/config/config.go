@@ -621,6 +621,41 @@ type SlackSettings struct {
 	AppToken SecureString `json:"app_token,omitzero" yaml:"app_token,omitempty" env:"CLAWY_CHANNELS_SLACK_APP_TOKEN"`
 }
 
+// WebChatSettings configures the built-in browser chat surface served from
+// Clawy's shared gateway HTTP server (OpenClaw-style WebChat).
+type WebChatSettings struct {
+	// Token is an optional shared secret. When set, browsers must present it
+	// (via ?token= on first load, remembered in localStorage) to chat.
+	Token SecureString `json:"token,omitzero" yaml:"token,omitempty" env:"CLAWY_CHANNELS_WEBCHAT_TOKEN"`
+	// Path overrides the HTTP mount path. Defaults to "/webchat/".
+	Path string `json:"path"               yaml:"-"                env:"CLAWY_CHANNELS_WEBCHAT_PATH"`
+	// MaxMessageLength caps outbound message length in runes (0 = default 4000).
+	MaxMessageLength int `json:"max_message_length" yaml:"-"                env:"CLAWY_CHANNELS_WEBCHAT_MAX_MESSAGE_LENGTH"`
+}
+
+// EffectivePath returns the normalized HTTP mount path for the webchat UI.
+func (s *WebChatSettings) EffectivePath() string {
+	p := strings.TrimSpace(s.Path)
+	if p == "" {
+		return "/webchat/"
+	}
+	if !strings.HasPrefix(p, "/") {
+		p = "/" + p
+	}
+	if !strings.HasSuffix(p, "/") {
+		p += "/"
+	}
+	return p
+}
+
+// EffectiveMaxMessageLength returns the configured outbound message cap.
+func (s *WebChatSettings) EffectiveMaxMessageLength() int {
+	if s.MaxMessageLength > 0 {
+		return s.MaxMessageLength
+	}
+	return 4000
+}
+
 type MatrixSettings struct {
 	Homeserver         string       `json:"homeserver"                     yaml:"-"                      env:"CLAWY_CHANNELS_MATRIX_HOMESERVER"`
 	UserID             string       `json:"user_id"                        yaml:"-"                      env:"CLAWY_CHANNELS_MATRIX_USER_ID"`
@@ -1093,6 +1128,12 @@ type CronToolsConfig struct {
 	CommandAllowedRemotes []string `json:"command_allowed_remotes" env:"CLAWY_TOOLS_CRON_COMMAND_ALLOWED_REMOTES"`
 }
 
+const (
+	TerminalBackendLocal  = "local"
+	TerminalBackendDocker = "docker"
+	TerminalBackendSSH    = "ssh"
+)
+
 type ExecConfig struct {
 	ToolConfig          `         envPrefix:"CLAWY_TOOLS_EXEC_"`
 	EnableDenyPatterns  bool     `                                 json:"enable_deny_patterns"  env:"CLAWY_TOOLS_EXEC_ENABLE_DENY_PATTERNS"`
@@ -1100,6 +1141,24 @@ type ExecConfig struct {
 	CustomDenyPatterns  []string `                                 json:"custom_deny_patterns"  env:"CLAWY_TOOLS_EXEC_CUSTOM_DENY_PATTERNS"`
 	CustomAllowPatterns []string `                                 json:"custom_allow_patterns" env:"CLAWY_TOOLS_EXEC_CUSTOM_ALLOW_PATTERNS"`
 	TimeoutSeconds      int      `                                 json:"timeout_seconds"       env:"CLAWY_TOOLS_EXEC_TIMEOUT_SECONDS"` // 0 means use default (60s)
+
+	// Backend selects where commands run (Hermes-agent-style terminal
+	// backends): "local" (default), "docker", or "ssh".
+	Backend string `json:"backend,omitempty" yaml:"backend,omitempty" env:"CLAWY_TOOLS_EXEC_BACKEND"`
+
+	// Docker backend options: exec commands inside an already-running
+	// container via `docker exec`.
+	DockerContainer string `json:"docker_container,omitempty" yaml:"docker_container,omitempty" env:"CLAWY_TOOLS_EXEC_DOCKER_CONTAINER"`
+	DockerShell     string `json:"docker_shell,omitempty"     yaml:"docker_shell,omitempty"     env:"CLAWY_TOOLS_EXEC_DOCKER_SHELL"` // default: sh (bash if present is NOT probed)
+
+	// SSH backend options: run commands on a remote host via `ssh`.
+	// Key-based auth with BatchMode is used so commands never hang on prompts.
+	SSHHost      string `json:"ssh_host,omitempty"        yaml:"ssh_host,omitempty"        env:"CLAWY_TOOLS_EXEC_SSH_HOST"`
+	SSHPort      int    `json:"ssh_port,omitempty"        yaml:"ssh_port,omitempty"        env:"CLAWY_TOOLS_EXEC_SSH_PORT"`
+	SSHUser      string `json:"ssh_user,omitempty"        yaml:"ssh_user,omitempty"        env:"CLAWY_TOOLS_EXEC_SSH_USER"`
+	SSHKeyPath   string `json:"ssh_key_path,omitempty"    yaml:"ssh_key_path,omitempty"    env:"CLAWY_TOOLS_EXEC_SSH_KEY_PATH"`
+	SSHShell     string `json:"ssh_shell,omitempty"       yaml:"ssh_shell,omitempty"       env:"CLAWY_TOOLS_EXEC_SSH_SHELL"` // default: sh
+	SSHStrictHostKey bool `json:"-"                                       yaml:"-"` // reserved
 }
 
 type SkillsToolsConfig struct {

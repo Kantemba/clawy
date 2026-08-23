@@ -26,6 +26,7 @@ import (
 	"github.com/Kantemba/clawy/cmd/clawy/internal/migrate"
 	"github.com/Kantemba/clawy/cmd/clawy/internal/model"
 	"github.com/Kantemba/clawy/cmd/clawy/internal/onboard"
+	pairingcmd "github.com/Kantemba/clawy/cmd/clawy/internal/pairing"
 	"github.com/Kantemba/clawy/cmd/clawy/internal/skills"
 	"github.com/Kantemba/clawy/cmd/clawy/internal/status"
 	"github.com/Kantemba/clawy/cmd/clawy/internal/version"
@@ -139,6 +140,7 @@ clawy --no-color status`,
 		migrate.NewMigrateCommand(),
 		skills.NewSkillsCommand(),
 		model.NewModelCommand(),
+		pairingcmd.NewPairingCommand(),
 		updater.NewUpdateCommand("clawy"),
 		version.NewVersionCommand(),
 	)

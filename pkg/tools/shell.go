@@ -46,6 +46,10 @@ type ExecTool struct {
 	restrictToWorkspace bool
 	allowRemote         bool
 	sessionManager      *SessionManager
+	// execCfg retains the raw exec tool configuration so terminal backends
+	// (local/docker/ssh) can be resolved per invocation. May be nil, which
+	// means defaults (local backend).
+	execCfg *config.ExecConfig
 }
 
 var (
@@ -198,6 +202,11 @@ func NewExecToolWithConfig(
 		timeout = time.Duration(cfg.Tools.Exec.TimeoutSeconds) * time.Second
 	}
 
+	var execCfg *config.ExecConfig
+	if cfg != nil {
+		execCfg = &cfg.Tools.Exec
+	}
+
 	return &ExecTool{
 		workingDir:          workingDir,
 		timeout:             timeout,
@@ -208,6 +217,7 @@ func NewExecToolWithConfig(
 		restrictToWorkspace: restrict,
 		allowRemote:         allowRemote,
 		sessionManager:      getSessionManager(),
+		execCfg:             execCfg,
 	}, nil
 }
 
@@ -394,15 +404,10 @@ func (t *ExecTool) runSync(ctx context.Context, command, cwd string) *ToolResult
 	}
 	defer cancel()
 
-	var cmd *exec.Cmd
-	if runtime.GOOS == "windows" {
-		cmd = exec.CommandContext(cmdCtx, "powershell", "-NoProfile", "-NonInteractive", "-Command", command)
-	} else {
-		cmd = exec.CommandContext(cmdCtx, "sh", "-c", command)
-	}
-	if cwd != "" {
-		cmd.Dir = cwd
-	}
+	// Route through the configured terminal backend (local/docker/ssh). The
+	// isolation entry point below still applies to the spawned process (the
+	// docker/ssh client locally, or the shell itself on the local backend).
+	cmd := buildTerminalCommand(cmdCtx, t.execCfg, command, cwd)
 
 	prepareCommandForTermination(cmd)
 
@@ -449,6 +454,10 @@ func (t *ExecTool) runSync(ctx context.Context, command, cwd string) *ToolResult
 	output := stdout.String()
 	if stderr.Len() > 0 {
 		output += "\nSTDERR:\n" + stderr.String()
+	}
+	// Tag non-local runs so the model knows where the command executed.
+	if label := describeBackend(t.execCfg); label != "" {
+		output = "[" + label + "] " + output
 	}
 
 	if err != nil {
@@ -516,15 +525,18 @@ func (t *ExecTool) runBackground(ctx context.Context, command, cwd string, ptyEn
 		ptyKeyMode: PtyKeyModeCSI,
 	}
 
-	var cmd *exec.Cmd
-	if runtime.GOOS == "windows" {
-		cmd = exec.Command("powershell", "-NoProfile", "-NonInteractive", "-Command", command)
-	} else {
-		cmd = exec.Command("sh", "-c", command)
+	// Remote backends cannot host a process-level PTY (pty.Open wraps a local
+	// tty); degrade to plain pipes so docker/ssh still stream output.
+	if ptyEnabled && !backendSupportsPTY(t.execCfg) {
+		logger.DebugCF("tools", "pty unsupported on selected exec backend, using pipes", map[string]any{
+			"backend": effectiveBackend(t.execCfg.Backend),
+		})
+		ptyEnabled = false
 	}
-	if cwd != "" {
-		cmd.Dir = cwd
-	}
+
+	// Background sessions intentionally outlive the request context; the
+	// backend client process is managed through the session lifecycle.
+	cmd := buildTerminalCommand(context.Background(), t.execCfg, command, cwd)
 
 	prepareCommandForTermination(cmd)
 

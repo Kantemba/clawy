@@ -35,6 +35,7 @@ import (
 	_ "github.com/Kantemba/clawy/pkg/channels/teams_webhook"
 	_ "github.com/Kantemba/clawy/pkg/channels/telegram"
 	_ "github.com/Kantemba/clawy/pkg/channels/vk"
+	_ "github.com/Kantemba/clawy/pkg/channels/webchat"
 	_ "github.com/Kantemba/clawy/pkg/channels/wecom"
 	_ "github.com/Kantemba/clawy/pkg/channels/weixin"
 	_ "github.com/Kantemba/clawy/pkg/channels/whatsapp"
@@ -45,6 +46,7 @@ import (
 	runtimeevents "github.com/Kantemba/clawy/pkg/events"
 	"github.com/Kantemba/clawy/pkg/health"
 	"github.com/Kantemba/clawy/pkg/heartbeat"
+	"github.com/Kantemba/clawy/pkg/pairing"
 	"github.com/Kantemba/clawy/pkg/logger"
 	"github.com/Kantemba/clawy/pkg/mcpx/server"
 	"github.com/Kantemba/clawy/pkg/media"
@@ -460,6 +462,10 @@ func setupAndStartServices(
 		msgBus,
 		runningServices.MediaStore,
 		channels.WithRuntimeEvents(agentLoop.RuntimeEventBus()),
+		// Enable the OpenClaw-style DM pairing flow: unknown senders on
+		// allow-listed channels receive a pairing code the owner can approve
+		// with `clawy pairing approve`.
+		channels.WithWorkspacePairing(pairing.NewManager(cfg.WorkspacePath())),
 	)
 	if err != nil {
 		if fms, ok := runningServices.MediaStore.(*media.FileMediaStore); ok {

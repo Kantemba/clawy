@@ -5,9 +5,11 @@ import (
 	"crypto/rand"
 	"encoding/binary"
 	"encoding/hex"
+	"fmt"
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -16,6 +18,7 @@ import (
 	"github.com/Kantemba/clawy/pkg/identity"
 	"github.com/Kantemba/clawy/pkg/logger"
 	"github.com/Kantemba/clawy/pkg/media"
+	"github.com/Kantemba/clawy/pkg/pairing"
 )
 
 var (
@@ -75,6 +78,12 @@ func WithReasoningChannelID(id string) BaseChannelOption {
 	return func(c *BaseChannel) { c.reasoningChannelID = id }
 }
 
+// WithPairingManager attaches a pairing.Manager so unknown DM senders receive
+// OpenClaw-style pairing instructions instead of being silently dropped.
+func WithPairingManager(pm *pairing.Manager) BaseChannelOption {
+	return func(c *BaseChannel) { c.pairingManager = pm }
+}
+
 // MessageLengthProvider is an opt-in interface that channels implement
 // to advertise their maximum message length. The Manager uses this via
 // type assertion to decide whether to split outbound messages.
@@ -94,6 +103,12 @@ type BaseChannel struct {
 	placeholderRecorder PlaceholderRecorder
 	owner               Channel // the concrete channel that embeds this BaseChannel
 	reasoningChannelID  string
+
+	pairingManager *pairing.Manager
+	pairingMu      sync.Mutex
+	// pairingNotices rate-limits "pairing required" notices per sender so a
+	// spammy unknown sender cannot flood the chat with instructions.
+	pairingNotices map[string]time.Time
 }
 
 func NewBaseChannel(
@@ -273,12 +288,26 @@ func (c *BaseChannel) HandleMessageWithContext(
 		sender = senderOpts[0]
 	}
 	senderID := strings.TrimSpace(inboundCtx.SenderID)
+
+	denied := false
 	if sender.CanonicalID != "" || sender.PlatformID != "" {
-		if !c.IsAllowedSender(sender) {
-			return nil
-		}
+		denied = !c.IsAllowedSender(sender)
 	} else {
-		if !c.IsAllowed(senderID) {
+		denied = !c.IsAllowed(senderID)
+	}
+	if denied {
+		// OpenClaw-style pairing: an approved pairing request admits the
+		// sender like an allow-listed user; otherwise coach them through
+		// the pairing flow instead of dropping the message silently.
+		pairingKey := sender.CanonicalID
+		if pairingKey == "" {
+			pairingKey = sender.PlatformID
+		}
+		if pairingKey == "" {
+			pairingKey = senderID
+		}
+		if !c.pairingAdmits(pairingKey) {
+			c.handlePairing(ctx, deliveryChatID, inboundCtx, sender, senderID)
 			return nil
 		}
 	}
@@ -391,6 +420,128 @@ func (c *BaseChannel) GetPlaceholderRecorder() PlaceholderRecorder {
 // This allows HandleMessage to auto-trigger TypingCapable / ReactionCapable / PlaceholderCapable.
 func (c *BaseChannel) SetOwner(ch Channel) {
 	c.owner = ch
+}
+
+// SetPairingManager attaches a pairing.Manager at runtime (used by the channel
+// Manager so channels built before the workspace is known still get pairing).
+func (c *BaseChannel) SetPairingManager(pm *pairing.Manager) {
+	c.pairingManager = pm
+}
+
+// GetPairingManager returns the attached pairing manager (may be nil).
+func (c *BaseChannel) GetPairingManager() *pairing.Manager { return c.pairingManager }
+
+const (
+	// pairingNoticeCooldown rate-limits pairing instructions per sender.
+	pairingNoticeCooldown = 10 * time.Minute
+)
+
+// pairingNoticeTemplate mirrors OpenClaw's pairing reply: it tells the unknown
+// sender what happened and gives the owner the exact command to approve them.
+const pairingNoticeTemplate = "👋 Welcome! This assistant only responds to paired users.\n\n" +
+	"Your pairing code: %s\n\n" +
+	"The owner can approve this chat by running:\n" +
+	"`clawy pairing approve %s %s`"
+
+// pairingAdmits reports whether the sender holds an approved pairing request,
+// which grants access without an explicit allow_from entry.
+func (c *BaseChannel) pairingAdmits(senderKey string) bool {
+	pm := c.pairingManager
+	if pm == nil || strings.TrimSpace(senderKey) == "" {
+		return false
+	}
+	return pm.IsApproved(c.name, senderKey)
+}
+
+// handlePairing implements the OpenClaw-style DM pairing flow. It is called
+// when a sender fails the allow-list check: for direct chats with an unknown
+// sender we create (or reuse) a pending pairing request and reply with setup
+// instructions, rate-limited per sender.
+func (c *BaseChannel) handlePairing(
+	ctx context.Context,
+	deliveryChatID string,
+	inboundCtx bus.InboundContext,
+	sender bus.SenderInfo,
+	fallbackSenderID string,
+) {
+	pm := c.pairingManager
+	if pm == nil || c.bus == nil {
+		return
+	}
+
+	// Never start pairing from group conversations — pairing is a DM flow.
+	switch strings.ToLower(strings.TrimSpace(inboundCtx.ChatType)) {
+	case "", "direct", "dm", "private":
+	default:
+		return
+	}
+
+	senderKey := sender.CanonicalID
+	if senderKey == "" {
+		senderKey = sender.PlatformID
+	}
+	if senderKey == "" {
+		senderKey = fallbackSenderID
+	}
+	if strings.TrimSpace(senderKey) == "" {
+		return
+	}
+	if !c.shouldSendPairingNotice(senderKey) {
+		return
+	}
+
+	req, created, err := pm.RequestOrPending(c.name, senderKey, sender.DisplayName)
+	if err != nil {
+		logger.WarnCF("channels", "pairing request failed", map[string]any{
+			"channel": c.name,
+			"sender":  senderKey,
+			"error":   err.Error(),
+		})
+		return
+	}
+	if !created {
+		// An existing pending request was reused; cooldown already applied.
+		return
+	}
+
+	text := fmt.Sprintf(pairingNoticeTemplate, req.Code, c.name, req.Code)
+	out := bus.OutboundMessage{
+		Channel: c.name,
+		ChatID:  deliveryChatID,
+		Context: bus.InboundContext{
+			Channel:  c.name,
+			ChatID:   deliveryChatID,
+			SenderID: senderKey,
+			ChatType: inboundCtx.ChatType,
+		},
+		Content: text,
+	}
+	// Only send through the concrete channel when the Manager has injected
+	// the owner; otherwise there is no working Send implementation yet.
+	if target := c.owner; target != nil {
+		if _, err := target.Send(ctx, out); err != nil {
+			logger.WarnCF("channels", "failed to send pairing notice", map[string]any{
+				"channel": c.name,
+				"chat_id": deliveryChatID,
+				"error":   err.Error(),
+			})
+		}
+	}
+}
+
+// shouldSendPairingNotice reports whether enough time has passed since the
+// last pairing notice for this sender, recording the send when true.
+func (c *BaseChannel) shouldSendPairingNotice(senderKey string) bool {
+	c.pairingMu.Lock()
+	defer c.pairingMu.Unlock()
+	if c.pairingNotices == nil {
+		c.pairingNotices = map[string]time.Time{}
+	}
+	if last, ok := c.pairingNotices[senderKey]; ok && time.Since(last) < pairingNoticeCooldown {
+		return false
+	}
+	c.pairingNotices[senderKey] = time.Now()
+	return true
 }
 
 // BuildMediaScope constructs a scope key for media lifecycle tracking.

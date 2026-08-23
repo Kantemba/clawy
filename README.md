@@ -470,7 +470,7 @@ For full provider configuration details, see [Providers & Models](docs/guides/pr
 
 ## 💬 Channels (Chat Apps)
 
-Talk to your Clawy through 19+ messaging platforms:
+Talk to your Clawy through 20+ messaging platforms:
 
 | Channel | Setup | Protocol | Docs |
 |---------|-------|----------|------|
@@ -493,8 +493,13 @@ Talk to your Clawy through 19+ messaging platforms:
 | **MaixCam** | Easy (enable) | TCP socket | [Guide](docs/channels/maixcam/README.md) |
 | **Pico** | Easy (enable) | Native protocol | Built-in |
 | **Pico Client** | Easy (WebSocket URL) | WebSocket | Built-in |
+| **WebChat** | Easy (enable) | Browser (HTTP + SSE) | Built-in |
 
 > All webhook-based channels share a single Gateway HTTP server (`gateway.host`:`gateway.port`, default `127.0.0.1:18790`). Feishu uses WebSocket/SDK mode and does not use the shared HTTP server.
+
+> **WebChat** (inspired by OpenClaw) serves a zero-dependency chat page at `http://127.0.0.1:18790/webchat/` on the shared Gateway server — no bot token required. Enable it with a channel entry of type `"webchat"`; set `settings.token` for shared-secret auth when the gateway is exposed beyond localhost.
+
+> **Pairing** (inspired by OpenClaw): when an unknown sender DMs a channel that has an `allow_from` list, Clawy automatically sends them a 6-digit pairing code instead of silently dropping the message. Approve access from your terminal with `clawy pairing approve <channel> <code>` (also `list` / `reject`). Pending requests expire after 30 minutes and are stored per-workspace under `state/pairing.json`.
 
 > Log verbosity is controlled by `gateway.log_level` (default: `warn`). Supported values: `debug`, `info`, `warn`, `error`, `fatal`. Can also be set via `CLAWY_LOG_LEVEL`. See [Configuration](docs/guides/configuration.md#gateway-log-level) for details.
 
@@ -521,6 +526,34 @@ Clawy can search the web to provide up-to-date information. Configure in `tools.
 ### ⚙️ Other Tools
 
 Clawy includes built-in tools for file operations, code execution, scheduling, and more. See [Tools Configuration](docs/reference/tools_configuration.md) for details.
+
+### 🖥️ Terminal Backends
+
+Inspired by the Hermes agent, the `exec` tool can run shell commands not only locally but inside a Docker container or on a remote host over SSH — the Agent doesn't need to know the difference. Configure under `tools.exec`:
+
+| Field | Values | Description |
+|-------|--------|-------------|
+| `backend` | `local` (default), `docker`, `ssh` | Where commands execute |
+| `docker_container` | container name/ID | Required for the `docker` backend; runs via `docker exec` |
+| `docker_shell` | default `sh` | Shell used inside the container |
+| `ssh_host` / `ssh_port` / `ssh_user` | — | Required for the `ssh` backend |
+| `ssh_key_path` | default SSH agent keys | Key-based auth with `BatchMode`, so commands never hang on prompts |
+| `ssh_shell` | default `sh` | Remote login shell |
+
+Example:
+
+```json
+"tools": {
+  "exec": {
+    "enabled": true,
+    "backend": "docker",
+    "docker_container": "my-dev-box",
+    "docker_shell": "bash"
+  }
+}
+```
+
+> Background sessions (`action=run` + `background=true`) work on all backends. PTY mode degrades to plain pipes on `docker`/`ssh`. The local backend keeps all existing isolation and deny-pattern behavior unchanged.
 
 ## 🎯 Skills
 
@@ -622,6 +655,9 @@ Connect Clawy to the Agent Social Network simply by sending a single message via
 | `clawy cron add ...`   | Add a scheduled job              |
 | `clawy cron disable`   | Disable a scheduled job          |
 | `clawy cron remove`    | Remove a scheduled job           |
+| `clawy pairing list`   | List pending pairing requests    |
+| `clawy pairing approve ...` | Approve a sender via pairing code |
+| `clawy pairing reject` | Reject a pending pairing request |
 | `clawy skills list`    | List installed skills            |
 | `clawy skills install` | Install a skill                  |
 | `clawy migrate`        | Migrate data from older versions |

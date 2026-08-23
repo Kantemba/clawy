@@ -28,6 +28,7 @@ import (
 	"github.com/Kantemba/clawy/pkg/health"
 	"github.com/Kantemba/clawy/pkg/logger"
 	"github.com/Kantemba/clawy/pkg/media"
+	"github.com/Kantemba/clawy/pkg/pairing"
 	"github.com/Kantemba/clawy/pkg/utils"
 )
 
@@ -91,6 +92,7 @@ type Manager struct {
 	runtimeEvents             runtimeevents.Bus
 	config                    *config.Config
 	mediaStore                media.MediaStore
+	pairingManager            *pairing.Manager
 	dispatchTask              *asyncTask
 	mux                       *dynamicServeMux
 	httpServer                *http.Server
@@ -115,6 +117,14 @@ type ManagerOption func(*Manager)
 func WithRuntimeEvents(eventBus runtimeevents.Bus) ManagerOption {
 	return func(m *Manager) {
 		m.runtimeEvents = eventBus
+	}
+}
+
+// WithWorkspacePairing injects the workspace pairing manager so channels can
+// run the OpenClaw-style DM pairing flow for unknown senders.
+func WithWorkspacePairing(pm *pairing.Manager) ManagerOption {
+	return func(m *Manager) {
+		m.pairingManager = pm
 	}
 }
 
@@ -597,6 +607,24 @@ func (m *Manager) SetMediaStore(store media.MediaStore) {
 	}
 }
 
+// SetPairingManager attaches the workspace pairing manager and propagates it
+// to every registered channel that supports pairing. Channels initialized
+// later receive it automatically via initChannel.
+func (m *Manager) SetPairingManager(pm *pairing.Manager) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	m.pairingManager = pm
+	if pm == nil {
+		return
+	}
+	for _, ch := range m.channels {
+		if setter, ok := ch.(interface{ SetPairingManager(*pairing.Manager) }); ok {
+			setter.SetPairingManager(pm)
+		}
+	}
+}
+
 // GetStreamer implements bus.StreamDelegate.
 // It checks if the named channel supports streaming and returns a Streamer.
 func (m *Manager) GetStreamer(ctx context.Context, channelName, chatID, sessionKey string) (bus.Streamer, bool) {
@@ -1006,6 +1034,12 @@ func (m *Manager) initChannel(typeName, channelName string) {
 		// Inject owner reference so BaseChannel.HandleMessage can auto-trigger typing/reaction
 		if setter, ok := ch.(interface{ SetOwner(ch Channel) }); ok {
 			setter.SetOwner(ch)
+		}
+		// Inject pairing manager so unknown DM senders get pairing instructions
+		if m.pairingManager != nil {
+			if setter, ok := ch.(interface{ SetPairingManager(pm *pairing.Manager) }); ok {
+				setter.SetPairingManager(m.pairingManager)
+			}
 		}
 		m.channels[channelName] = ch
 		m.publishChannelEvent(
