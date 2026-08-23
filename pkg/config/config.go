@@ -1165,10 +1165,14 @@ type ToolsConfig struct {
 	ListDir         ToolConfig         `json:"list_dir"          yaml:"-"                                                       envPrefix:"CLAWY_TOOLS_LIST_DIR_"`
 	LoadImage       ToolConfig         `json:"load_image"        yaml:"-"                                                       envPrefix:"CLAWY_TOOLS_LOAD_IMAGE_"`
 	Message         MessageToolsConfig `json:"message"           yaml:"-"`
-	ReadFile        ReadFileToolConfig `json:"read_file"         yaml:"-"                                                       envPrefix:"CLAWY_TOOLS_READ_FILE_"`
+	// Memory gates the Hermes-style curated memory tool (MEMORY.md/USER.md).
+	Memory          ToolConfig         `json:"memory"            yaml:"-"                                                       envPrefix:"CLAWY_TOOLS_MEMORY_"`
+	ReadFile    ReadFileToolConfig `json:"read_file"         yaml:"-"                                                       envPrefix:"CLAWY_TOOLS_READ_FILE_"`
 	Serial          ToolConfig         `json:"serial"            yaml:"-"                                                       envPrefix:"CLAWY_TOOLS_SERIAL_"`
 	SendFile        ToolConfig         `json:"send_file"         yaml:"-"                                                       envPrefix:"CLAWY_TOOLS_SEND_FILE_"`
 	SendTTS         ToolConfig         `json:"send_tts"          yaml:"-"                                                       envPrefix:"CLAWY_TOOLS_SEND_TTS_"`
+	// SessionSearch gates BM25 recall over past conversation sessions.
+	SessionSearch   ToolConfig         `json:"session_search"    yaml:"-"                                                       envPrefix:"CLAWY_TOOLS_SESSION_SEARCH_"`
 	Spawn           ToolConfig         `json:"spawn"             yaml:"-"                                                       envPrefix:"CLAWY_TOOLS_SPAWN_"`
 	SpawnStatus     ToolConfig         `json:"spawn_status"      yaml:"-"                                                       envPrefix:"CLAWY_TOOLS_SPAWN_STATUS_"`
 	SPI             ToolConfig         `json:"spi"               yaml:"-"                                                       envPrefix:"CLAWY_TOOLS_SPI_"`
@@ -2002,6 +2006,8 @@ func (t *ToolsConfig) IsToolEnabled(name string) bool {
 		return t.LoadImage.Enabled
 	case "message":
 		return t.Message.Enabled
+	case "memory":
+		return t.Memory.Enabled
 	case "read_file":
 		return t.ReadFile.Enabled
 	case "serial":
@@ -2020,6 +2026,8 @@ func (t *ToolsConfig) IsToolEnabled(name string) bool {
 		return t.SendFile.Enabled
 	case "send_tts":
 		return t.SendTTS.Enabled
+	case "session_search":
+		return t.SessionSearch.Enabled
 	case "write_file":
 		return t.WriteFile.Enabled
 	case "mcp":

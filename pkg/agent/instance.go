@@ -147,6 +147,16 @@ func NewAgentInstance(
 		).
 		WithSplitOnMarker(cfg.Agents.Defaults.SplitOnMarker)
 
+	// Hermes-style self-improving memory: an exclusive `memory` tool over the
+	// bounded MEMORY.md/USER.md stores preloaded into every prompt, plus
+	// BM25-based `session_search` for recalling verbatim past conversations.
+	if cfg.Tools.IsToolEnabled("memory") {
+		toolsRegistry.Register(tools.NewMemoryTool(contextBuilder.memory))
+	}
+	if cfg.Tools.IsToolEnabled("session_search") {
+		toolsRegistry.Register(tools.NewSessionSearchTool(sessions))
+	}
+
 	agentID := routing.DefaultAgentID
 	agentName := ""
 	var subagents *config.SubagentsConfig

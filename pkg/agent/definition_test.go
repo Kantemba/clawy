@@ -201,22 +201,25 @@ Follow the body prompt.
 	}
 }
 
-func TestLoadBootstrapFilesIncludesWorkspaceUserMarkdown(t *testing.T) {
+func TestLoadBootstrapFilesExcludesManagedUserMemory(t *testing.T) {
 	tmpDir := setupWorkspace(t, map[string]string{
 		"AGENT.md": "# Agent\nFollow the new structure.",
 		"SOUL.md":  "# Soul\nSpeak plainly.",
-		"USER.md":  "# User\nShared profile.",
+		"USER.md":  "§ User prefers dark mode.",
 	})
 	defer cleanupWorkspace(t, tmpDir)
 
 	cb := NewContextBuilder(tmpDir)
 	bootstrap := cb.LoadBootstrapFiles()
 
-	if !strings.Contains(bootstrap, "Shared profile") {
-		t.Fatalf("expected workspace USER.md in bootstrap, got %q", bootstrap)
+	if strings.Contains(bootstrap, "dark mode") {
+		t.Fatalf("USER.md is managed memory and must not appear in bootstrap, got %q", bootstrap)
 	}
-	if !strings.Contains(bootstrap, "## USER.md") {
-		t.Fatalf("expected USER.md heading in bootstrap, got %q", bootstrap)
+
+	// The profile must still reach the prompt through the memory snapshot.
+	snapshot := cb.memory.GetMemoryContext()
+	if !strings.Contains(snapshot, "§ User prefers dark mode.") {
+		t.Fatalf("expected workspace USER.md content in memory snapshot, got %q", snapshot)
 	}
 }
 

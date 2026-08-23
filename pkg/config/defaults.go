@@ -434,6 +434,9 @@ func DefaultConfig() *Config {
 			SendTTS: ToolConfig{
 				Enabled: false,
 			},
+			SessionSearch: ToolConfig{
+				Enabled: true, // BM25 recall over past sessions
+			},
 			MCP: MCPConfig{
 				ToolConfig: ToolConfig{
 					Enabled: false,
@@ -484,6 +487,9 @@ func DefaultConfig() *Config {
 					Enabled: true,
 				},
 				MediaEnabled: false,
+			},
+			Memory: ToolConfig{
+				Enabled: true, // Hermes-style curated memory (MEMORY.md/USER.md)
 			},
 			ReadFile: ReadFileToolConfig{
 				Enabled:         true,

@@ -164,8 +164,7 @@ func (cb *ContextBuilder) getIdentity(includeToolUseRule bool) string {
 		rules = append(
 			rules,
 			fmt.Sprintf(
-				"**Memory** - When interacting with me if something seems memorable, update %s/memory/MEMORY.md",
-				workspacePath,
+				"**Persistent memory** - Your MEMORY.md and USER.md are preloaded into every conversation and managed exclusively via the `memory` tool (never edit them with file tools). When you learn something durable about the user, their preferences, or the task, persist it right away so future sessions start smarter; recall past chats with `session_search`.",
 			),
 		)
 	}
@@ -180,8 +179,7 @@ You are clawy, a helpful AI assistant.
 
 ## Workspace
 Your workspace is at: %s
-- Memory: %s/memory/MEMORY.md
-- Daily Notes: %s/memory/YYYYMM/YYYYMMDD.md
+- Memory: %s/memory/MEMORY.md (managed via the memory tool)
 - Skills: %s/skills/{skill-name}/SKILL.md
 
 ## Important Rules
@@ -189,7 +187,6 @@ Your workspace is at: %s
 %s
 `,
 		version,
-		workspacePath,
 		workspacePath,
 		workspacePath,
 		workspacePath,
@@ -305,7 +302,7 @@ func (cb *ContextBuilder) buildSystemPromptParts(opts systemPromptBuildOptions) 
 		})
 	}
 
-	// Memory context
+	// Memory context (Hermes-style snapshot: usage guidance + curated entries)
 	memoryContext := cb.memory.GetMemoryContext()
 	if memoryContext != "" {
 		add(PromptPart{
@@ -314,7 +311,7 @@ func (cb *ContextBuilder) buildSystemPromptParts(opts systemPromptBuildOptions) 
 			Slot:    PromptSlotMemory,
 			Source:  PromptSource{ID: PromptSourceMemory, Name: "memory:workspace"},
 			Title:   "memory",
-			Content: "# Memory\n\n" + memoryContext,
+			Content: memoryContext,
 			Stable:  true,
 			Cache:   PromptCacheEphemeral,
 		})
@@ -761,9 +758,11 @@ func (cb *ContextBuilder) LoadBootstrapFiles() string {
 			agentDefinition.Soul.Content,
 		)
 	}
-	if agentDefinition.User != nil {
-		fmt.Fprintf(&sb, "## %s\n\n%s\n\n", "USER.md", agentDefinition.User.Content)
-	}
+
+	// USER.md is intentionally NOT included here: it is managed memory,
+	// maintained by the agent through the `memory` tool and preloaded via the
+	// memory snapshot (see MemoryStore.GetMemoryContext). Keeping it out of
+	// the editable bootstrap prevents the two sources from diverging.
 
 	if agentDefinition.Source != AgentDefinitionSourceAgent {
 		filePath := filepath.Join(cb.workspace, "IDENTITY.md")
