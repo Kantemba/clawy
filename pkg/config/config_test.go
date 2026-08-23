@@ -562,6 +562,93 @@ func TestLoadConfig_EvolutionExplicitApplyModeAutoApplies(t *testing.T) {
 	assert.True(t, cfg.Evolution.AutoAppliesDrafts())
 }
 
+func TestEvolutionConfig_EffectiveOnlineRevision(t *testing.T) {
+	tests := []struct {
+		name string
+		cfg  EvolutionConfig
+		want bool
+	}{
+		{name: "disabled ignores flag", cfg: EvolutionConfig{Enabled: false, OnlineRevision: true}, want: false},
+		{name: "enabled and flag set", cfg: EvolutionConfig{Enabled: true, OnlineRevision: true}, want: true},
+		{name: "enabled but flag unset", cfg: EvolutionConfig{Enabled: true, OnlineRevision: false}, want: false},
+		{name: "flag unset implies false", cfg: EvolutionConfig{Enabled: true}, want: false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, tt.cfg.EffectiveOnlineRevision())
+		})
+	}
+}
+
+func TestLoadConfig_EvolutionOnlineRevision(t *testing.T) {
+	dir := t.TempDir()
+	configPath := filepath.Join(dir, "config.json")
+	raw := `{
+		"version": 3,
+		"evolution": {
+			"enabled": true,
+			"mode": "apply",
+			"online_revision": true
+		}
+	}`
+	if err := os.WriteFile(configPath, []byte(raw), 0o644); err != nil {
+		t.Fatalf("WriteFile(configPath): %v", err)
+	}
+	cfg, err := LoadConfig(configPath)
+	if err != nil {
+		t.Fatalf("LoadConfig() error: %v", err)
+	}
+	assert.True(t, cfg.Evolution.Enabled)
+	assert.True(t, cfg.Evolution.OnlineRevision)
+	assert.True(t, cfg.Evolution.EffectiveOnlineRevision())
+}
+
+func TestSaveConfig_DisabledEvolutionOmitsOnlineRevision(t *testing.T) {
+	cfg := DefaultConfig()
+	assert.False(t, cfg.Evolution.EffectiveOnlineRevision())
+
+	data, err := json.Marshal(cfg.Evolution)
+	if err != nil {
+		t.Fatalf("Marshal default evolution config: %v", err)
+	}
+	var raw map[string]any
+	if unmarshalErr := json.Unmarshal(data, &raw); unmarshalErr != nil {
+		t.Fatalf("Unmarshal: %v", unmarshalErr)
+	}
+	if _, ok := raw["online_revision"]; ok {
+		t.Fatalf("disabled evolution should not persist online_revision: %#v", raw)
+	}
+	if _, ok := raw["identity_curation"]; ok {
+		t.Fatalf("disabled evolution should not persist identity_curation: %#v", raw)
+	}
+}
+
+func TestEvolutionConfig_EffectiveIdentityCuration(t *testing.T) {
+	tests := []struct {
+		name string
+		cfg  EvolutionConfig
+		want bool
+	}{
+		{name: "disabled ignores flag", cfg: EvolutionConfig{Enabled: false, IdentityCuration: true}, want: false},
+		{name: "enabled and flag set", cfg: EvolutionConfig{Enabled: true, IdentityCuration: true}, want: true},
+		{name: "enabled but flag unset", cfg: EvolutionConfig{Enabled: true, IdentityCuration: false}, want: false},
+		{name: "flag unset implies false", cfg: EvolutionConfig{Enabled: true}, want: false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, tt.cfg.EffectiveIdentityCuration())
+		})
+	}
+}
+
+func TestDefaultConfig_OnlineLearningDefaults(t *testing.T) {
+	cfg := DefaultConfig()
+	assert.True(t, cfg.Evolution.OnlineRevision, "online revision should be on by default")
+	assert.True(t, cfg.Evolution.IdentityCuration, "identity curation should be on by default")
+	assert.False(t, cfg.Evolution.EffectiveOnlineRevision(), "disabled evolution must not activate online revision")
+	assert.False(t, cfg.Evolution.EffectiveIdentityCuration(), "disabled evolution must not activate identity curation")
+}
+
 func TestSaveConfig_DisabledEvolutionOmitsApplyMode(t *testing.T) {
 	dir := t.TempDir()
 	configPath := filepath.Join(dir, "config.json")

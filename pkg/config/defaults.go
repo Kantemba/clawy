@@ -53,6 +53,15 @@ func DefaultConfig() *Config {
 			MinTaskCount:    2,
 			MinSuccessRatio: 0.7,
 			ColdPathTrigger: "after_turn",
+			// Online by default: when a user enables evolution they get the
+			// closed learning loop (skill self-revision on failed turns and
+			// SOUL.md/USER.md identity curation on successful turns) without
+			// having to discover these flags. The loop is safe in the default
+			// "observe" mode (revisions are drafted, not auto-applied until
+			// mode="apply"), and both paths are gated on Enabled below. Users
+			// who want the legacy batch-only behaviour can set these to false.
+			OnlineRevision:   true,
+			IdentityCuration: true,
 		},
 		Channels: defaultChannels(),
 		Hooks: HooksConfig{
@@ -452,13 +461,13 @@ func DefaultConfig() *Config {
 			EditFile: ToolConfig{
 				Enabled: true,
 			},
-		FindSkills: ToolConfig{
-			Enabled: true,
-		},
-		FindSkill: ToolConfig{
-			Enabled: true,
-		},
-		I2C: ToolConfig{
+			FindSkills: ToolConfig{
+				Enabled: true,
+			},
+			FindSkill: ToolConfig{
+				Enabled: true,
+			},
+			I2C: ToolConfig{
 				Enabled: false, // Hardware tool - Linux only
 			},
 			InstallSkill: ToolConfig{

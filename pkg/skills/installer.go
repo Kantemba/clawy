@@ -595,7 +595,7 @@ func isSkillDirectory(name string) bool {
 
 func (si *SkillInstaller) Uninstall(skillName string) error {
 	parts := strings.Split(skillName, "/")
-	var finalSkillName string
+	finalSkillName := ""
 	for i := len(parts) - 1; i >= 0; i-- {
 		if parts[i] != "" {
 			finalSkillName = parts[i]
@@ -606,7 +606,18 @@ func (si *SkillInstaller) Uninstall(skillName string) error {
 		finalSkillName = skillName
 	}
 
-	skillDir := filepath.Join(si.workspace, "skills", finalSkillName)
+	// Reject traversal and malformed targets ("..", separators, absolute
+	// paths) before touching the filesystem: uninstall must only ever remove
+	// a direct child of {workspace}/skills.
+	if err := utils.ValidateSkillIdentifier(finalSkillName); err != nil {
+		return fmt.Errorf("invalid skill name %q: %w", skillName, err)
+	}
+
+	skillsRoot := filepath.Join(si.workspace, "skills")
+	skillDir := filepath.Join(skillsRoot, finalSkillName)
+	if !strings.HasPrefix(skillDir, skillsRoot+string(os.PathSeparator)) {
+		return fmt.Errorf("invalid skill location for %q", skillName)
+	}
 
 	if _, err := os.Stat(skillDir); os.IsNotExist(err) {
 		return fmt.Errorf("skill '%s' not found (processed as '%s')", skillName, finalSkillName)

@@ -63,36 +63,62 @@ type EvolutionConfig struct {
 	MinSuccessRatio float64  `json:"min_success_ratio,omitempty"`
 	ColdPathTrigger string   `json:"cold_path_trigger,omitempty"`
 	ColdPathTimes   []string `json:"cold_path_times,omitempty"`
+	// OnlineRevision enables the online skill self-improvement loop: when a turn
+	// fails while a learned skill was active, the runtime generates a targeted
+	// revision draft (a merge/patch of the existing skill) instead of waiting
+	// for the batch cold path. Drafts are validated and (when mode == "apply")
+	// applied to the live skill; otherwise they are saved as candidates for
+	// review.
+	OnlineRevision bool `json:"online_revision,omitempty"`
 	// Deprecated: use MinTaskCount.
 	MinCaseCount int `json:"min_case_count,omitempty"`
 	// Deprecated: use MinSuccessRatio.
 	MinSuccessRate float64 `json:"min_success_rate,omitempty"`
+	// IdentityCuration enables the online identity layer: at the end of each
+	// successful turn the runtime extracts durable facts about the agent
+	// (into SOUL.md) and the user (into USER.md) and appends them, deduplicated
+	// and rate-limited by a cool-down. It is only meaningful when evolution
+	// itself is enabled.
+	IdentityCuration bool `json:"identity_curation,omitempty"`
 }
 
 func (c EvolutionConfig) MarshalJSON() ([]byte, error) {
 	out := struct {
-		Enabled         bool     `json:"enabled,omitempty"`
-		Mode            string   `json:"mode,omitempty"`
-		StateDir        string   `json:"state_dir,omitempty"`
-		MinTaskCount    int      `json:"min_task_count,omitempty"`
-		MinSuccessRatio float64  `json:"min_success_ratio,omitempty"`
-		ColdPathTrigger string   `json:"cold_path_trigger,omitempty"`
-		ColdPathTimes   []string `json:"cold_path_times,omitempty"`
+		Enabled          bool     `json:"enabled,omitempty"`
+		Mode             string   `json:"mode,omitempty"`
+		StateDir         string   `json:"state_dir,omitempty"`
+		MinTaskCount     int      `json:"min_task_count,omitempty"`
+		MinSuccessRatio  float64  `json:"min_success_ratio,omitempty"`
+		ColdPathTrigger  string   `json:"cold_path_trigger,omitempty"`
+		ColdPathTimes    []string `json:"cold_path_times,omitempty"`
+		OnlineRevision   bool     `json:"online_revision,omitempty"`
+		IdentityCuration bool     `json:"identity_curation,omitempty"`
 	}{
-		Enabled:         c.Enabled,
-		Mode:            c.Mode,
-		StateDir:        c.StateDir,
-		MinTaskCount:    c.EffectiveMinTaskCount(),
-		MinSuccessRatio: c.EffectiveMinSuccessRatio(),
-		ColdPathTrigger: strings.TrimSpace(c.ColdPathTrigger),
-		ColdPathTimes:   c.EffectiveColdPathTimes(),
+		Enabled:          c.Enabled,
+		Mode:             c.Mode,
+		StateDir:         c.StateDir,
+		MinTaskCount:     c.EffectiveMinTaskCount(),
+		MinSuccessRatio:  c.EffectiveMinSuccessRatio(),
+		ColdPathTrigger:  strings.TrimSpace(c.ColdPathTrigger),
+		ColdPathTimes:    c.EffectiveColdPathTimes(),
+		OnlineRevision:   c.EffectiveOnlineRevision(),
+		IdentityCuration: c.EffectiveIdentityCuration(),
 	}
 	if !out.Enabled {
 		out.Mode = ""
 		out.ColdPathTrigger = ""
 		out.ColdPathTimes = nil
+		out.OnlineRevision = false
+		out.IdentityCuration = false
 	}
 	return json.Marshal(out)
+}
+
+// EffectiveIdentityCuration reports whether the online SOUL.md/USER.md
+// identity layer is enabled. It is only meaningful when evolution itself is
+// enabled; otherwise it is disabled regardless of the field value.
+func (c EvolutionConfig) EffectiveIdentityCuration() bool {
+	return c.Enabled && c.IdentityCuration
 }
 
 func (c EvolutionConfig) EffectiveMode() string {
@@ -173,6 +199,13 @@ func (c EvolutionConfig) EffectiveColdPathTimes() []string {
 
 func (c EvolutionConfig) AutoAppliesDrafts() bool {
 	return c.EffectiveMode() == "apply"
+}
+
+// EffectiveOnlineRevision reports whether the online skill self-improvement
+// loop is enabled. It is only meaningful when evolution itself is enabled;
+// otherwise it is disabled regardless of the field value.
+func (c EvolutionConfig) EffectiveOnlineRevision() bool {
+	return c.Enabled && c.OnlineRevision
 }
 
 // IsolationConfig controls subprocess isolation for commands started by Clawy.

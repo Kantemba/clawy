@@ -78,10 +78,10 @@ func (t *FindSkillTool) Execute(ctx context.Context, args map[string]any) *ToolR
 	defer t.mu.Unlock()
 
 	query, ok := args["query"].(string)
-	query = strings.ToLower(strings.TrimSpace(query))
-	if !ok || query == "" {
-		return ErrorResult("query is required and must be non-empty")
+	if !ok || strings.TrimSpace(query) == "" {
+		return ErrorResult("query is required and must be a non-empty string")
 	}
+	query = strings.ToLower(strings.TrimSpace(query))
 
 	registryName, _ := args["registry"].(string)
 	registryName = strings.TrimSpace(registryName)
@@ -215,7 +215,7 @@ func (t *FindSkillTool) installBestMatch(ctx context.Context, result skills.Sear
 		return ErrorResult(fmt.Sprintf("skill %q is flagged as malicious and cannot be installed", result.Slug))
 	}
 
-	if !workspaceHasValidInstalledSkill(t.workspace, dirName) {
+	if !skills.SkillDirIsValid(targetDir) {
 		_ = os.RemoveAll(targetDir)
 		restorePrevious()
 		return ErrorResult(fmt.Sprintf("downloaded skill %q is not valid", result.Slug))

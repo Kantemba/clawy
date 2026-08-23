@@ -135,6 +135,29 @@ type SkillVersionEntry struct {
 	RollbackReason string    `json:"rollback_reason,omitempty"`
 }
 
+// SkillFeedbackInput captures the evidence from a turn that used an existing
+// skill but did not succeed, so the runtime can produce a targeted revision.
+// This is the online counterpart to LearningRecord (which is built from
+// clustered batch data during the cold path).
+type SkillFeedbackInput struct {
+	Workspace      string                `json:"workspace"`
+	SkillName      string                `json:"skill_name"`
+	SkillBody      string                `json:"skill_body"`
+	TaskSummary    string                `json:"task_summary"`
+	FailureSummary string                `json:"failure_summary"`
+	FinalOutput    string                `json:"final_output,omitempty"`
+	ToolKinds      []string              `json:"tool_kinds,omitempty"`
+	ToolExecutions []ToolExecutionRecord `json:"tool_executions,omitempty"`
+}
+
+// SkillFeedbackResult is the outcome of an online skill revision. The returned
+// Draft is the generated (and reviewed) revision; Applied reports whether it
+// was written to the live skill on disk.
+type SkillFeedbackResult struct {
+	Draft   SkillDraft `json:"draft"`
+	Applied bool       `json:"applied"`
+}
+
 type SkillProfile struct {
 	SkillName          string              `json:"skill_name"`
 	WorkspaceID        string              `json:"workspace_id"`

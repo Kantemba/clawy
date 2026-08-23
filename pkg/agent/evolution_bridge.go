@@ -62,6 +62,18 @@ func newEvolutionBridge(
 		ApplierFactory: func(workspace string) *evolution.Applier {
 			return evolution.NewApplier(evolution.NewPaths(workspace, cfg.Evolution.StateDir), nil)
 		},
+		RevisorFactory: func(workspace string) evolution.SkillRevisor {
+			if cfg.Evolution.EffectiveOnlineRevision() {
+				return evolution.NewLLMSkillRevisor(provider, modelID, evolution.HeuristicSkillRevisor{})
+			}
+			return nil
+		},
+		CuratorFactory: func(workspace string) evolution.IdentityCurator {
+			if cfg.Evolution.EffectiveIdentityCuration() {
+				return evolution.NewLLMIdentityCurator(workspace, provider, modelID)
+			}
+			return nil
+		},
 	})
 	if err != nil {
 		return nil, err
@@ -226,6 +238,48 @@ func (b *evolutionBridge) handleTurnEndAsync(meta EventMeta, payload TurnEndPayl
 		}
 		if b.coldPathRunner != nil && b.cfg.RunsColdPathAfterTurn() {
 			b.coldPathRunner.Trigger(input.Workspace)
+		}
+		if b.cfg.EffectiveOnlineRevision() {
+			result, revErr := b.runtime.ReviseSkillOnFailure(b.bgCtx, input)
+			logFields := map[string]any{
+				"workspace": input.Workspace,
+				"turn_id":   input.TurnID,
+				"applied":   false,
+			}
+			if result.Draft.TargetSkillName != "" {
+				logFields["applied"] = result.Applied
+				logFields["skill_name"] = result.Draft.TargetSkillName
+				logFields["draft_id"] = result.Draft.ID
+			}
+			if revErr != nil {
+				logFields["error"] = revErr.Error()
+				logger.WarnCF("agent", "Online skill revision failed", logFields)
+			} else if result.Draft.ID != "" {
+				logger.InfoCF("agent", "Online skill revision completed", logFields)
+			}
+		}
+		if b.cfg.EffectiveIdentityCuration() && input.Status == string(TurnEndStatusCompleted) {
+			curResult, curErr := b.runtime.CurateIdentity(b.bgCtx, evolution.IdentityCurateInput{
+				Workspace:    input.Workspace,
+				TurnID:       input.TurnID,
+				Success:      true,
+				UserMessage:  input.UserMessage,
+				FinalContent: input.FinalContent,
+			})
+			if curErr != nil {
+				logger.WarnCF("agent", "Online identity curation failed", map[string]any{
+					"workspace": input.Workspace,
+					"turn_id":   input.TurnID,
+					"error":     curErr.Error(),
+				})
+			} else if curResult.Updated {
+				logger.InfoCF("agent", "Online identity curation completed", map[string]any{
+					"workspace":  input.Workspace,
+					"turn_id":    input.TurnID,
+					"soul_facts": len(curResult.SoulFacts),
+					"user_facts": len(curResult.UserFacts),
+				})
+			}
 		}
 	}()
 	return true

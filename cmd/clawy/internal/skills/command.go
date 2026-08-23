@@ -2,7 +2,6 @@ package skills
 
 import (
 	"fmt"
-	"path/filepath"
 
 	"github.com/spf13/cobra"
 
@@ -29,10 +28,11 @@ func NewSkillsCommand() *cobra.Command {
 
 			d.workspace = cfg.WorkspacePath()
 
-			// get global config directory and builtin skills directory
-			globalDir := filepath.Dir(internal.GetConfigPath())
-			globalSkillsDir := filepath.Join(globalDir, "skills")
-			builtinSkillsDir := filepath.Join(globalDir, "clawy", "skills")
+			// Global (~/.clawy/skills) and builtin skills directories,
+			// resolved through the shared helpers so the CLI agrees with
+			// the agent and web backend (including CLAWY_BUILTIN_SKILLS).
+			globalSkillsDir := skills.GlobalSkillsDir()
+			builtinSkillsDir := skills.ResolveBuiltinSkillsDir(skills.DefaultBuiltinSkillsDir())
 			d.skillsLoader = skills.NewSkillsLoader(d.workspace, globalSkillsDir, builtinSkillsDir)
 
 			return nil

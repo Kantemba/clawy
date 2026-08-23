@@ -140,17 +140,13 @@ func writeInstalledSkillOriginMeta(targetDir string, meta installedSkillOriginMe
 	return fileutil.WriteFileAtomic(filepath.Join(targetDir, ".skill-origin.json"), data, 0o600)
 }
 
+// workspaceHasValidSkillDirectory reports whether
+// {workspace}/skills/{directory} contains a usable SKILL.md definition. It
+// checks the target directory directly so a mismatch between the install
+// directory name and the skill's declared metadata name can never fail a
+// freshly completed install.
 func workspaceHasValidSkillDirectory(workspace, directory string) bool {
-	loader := skills.NewSkillsLoader(workspace, "", "")
-	for _, skill := range loader.ListSkills() {
-		if skill.Source != "workspace" {
-			continue
-		}
-		if filepath.Base(filepath.Dir(skill.Path)) == directory {
-			return true
-		}
-	}
-	return false
+	return skills.SkillDirIsValid(filepath.Join(workspace, "skills", directory))
 }
 
 func skillsRemoveFromWorkspace(workspace string, toolsConfig config.SkillsToolsConfig, skillName string) error {
@@ -180,7 +176,7 @@ func skillsRemoveFromWorkspace(workspace string, toolsConfig config.SkillsToolsC
 }
 
 func skillsInstallBuiltinCmd(workspace string) {
-	builtinSkillsDir := "./clawy/skills"
+	builtinSkillsDir := skills.ResolveBuiltinSkillsDir(skills.DefaultBuiltinSkillsDir())
 	workspaceSkillsDir := filepath.Join(workspace, "skills")
 
 	fmt.Printf("Copying builtin skills to workspace...\n")
@@ -216,54 +212,48 @@ func skillsInstallBuiltinCmd(workspace string) {
 }
 
 func skillsListBuiltinCmd() {
-	cfg, err := internal.LoadConfig()
-	if err != nil {
-		fmt.Printf("Error loading config: %v\n", err)
-		return
-	}
-	builtinSkillsDir := filepath.Join(filepath.Dir(cfg.WorkspacePath()), "clawy", "skills")
+	builtinRoot := skills.ResolveBuiltinSkillsDir(skills.DefaultBuiltinSkillsDir())
 
 	fmt.Println("\nAvailable Builtin Skills:")
 	fmt.Println("-----------------------")
 
-	entries, err := os.ReadDir(builtinSkillsDir)
+	entries, err := os.ReadDir(builtinRoot)
 	if err != nil {
 		fmt.Printf("Error reading builtin skills: %v\n", err)
 		return
 	}
 
-	if len(entries) == 0 {
-		fmt.Println("No builtin skills available.")
-		return
+	// Reuse the shared metadata parser so displayed descriptions match what
+	// the agent sees (frontmatter / markdown extraction), instead of fragile
+	// line-based parsing that previously produced empty descriptions.
+	loader := skills.NewSkillsLoader("", "", builtinRoot)
+	descriptions := make(map[string]string)
+	for _, skill := range loader.ListSkills() {
+		if skill.Source == "builtin" {
+			descriptions[skill.Path] = skill.Description
+		}
 	}
 
+	printed := 0
 	for _, entry := range entries {
-		if entry.IsDir() {
-			skillName := entry.Name()
-			skillFile := filepath.Join(builtinSkillsDir, skillName, "SKILL.md")
-
-			description := "No description"
-			if _, err := os.Stat(skillFile); err == nil {
-				data, err := os.ReadFile(skillFile)
-				if err == nil {
-					content := string(data)
-					if idx := strings.Index(content, "\n"); idx > 0 {
-						firstLine := content[:idx]
-						if strings.Contains(firstLine, "description:") {
-							descLine := strings.Index(content[idx:], "\n")
-							if descLine > 0 {
-								description = strings.TrimSpace(content[idx+descLine : idx+descLine])
-							}
-						}
-					}
-				}
-			}
-			status := "✓"
-			fmt.Printf("  %s  %s\n", status, entry.Name())
-			if description != "" {
-				fmt.Printf("     %s\n", description)
-			}
+		if !entry.IsDir() {
+			continue
 		}
+		skillFile := filepath.Join(builtinRoot, entry.Name(), "SKILL.md")
+		if _, err := os.Stat(skillFile); err != nil {
+			continue
+		}
+		fmt.Printf("  ✓  %s\n", entry.Name())
+		if description := descriptions[skillFile]; description != "" {
+			fmt.Printf("     %s\n", description)
+		} else {
+			fmt.Printf("     No description\n")
+		}
+		printed++
+	}
+
+	if printed == 0 {
+		fmt.Println("No builtin skills available.")
 	}
 }
 

@@ -1097,12 +1097,5 @@ func globalConfigDir() string {
 }
 
 func builtinSkillsDir() string {
-	if path := os.Getenv(config.EnvBuiltinSkills); path != "" {
-		return path
-	}
-	wd, err := os.Getwd()
-	if err != nil {
-		return ""
-	}
-	return filepath.Join(wd, "skills")
+	return skills.ResolveBuiltinSkillsDir(skills.DefaultBuiltinSkillsDir())
 }

@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strings"
 
 	"github.com/gomarkdown/markdown"
@@ -54,6 +55,13 @@ func (info SkillInfo) validate() error {
 	}
 	return errs
 }
+// Source resolution priority: lower wins when two roots expose a skill with
+// the same name.
+var sourcePriority = map[string]int{
+	"workspace": 0,
+	"global":    1,
+	"builtin":   2,
+}
 
 type SkillsLoader struct {
 	workspace       string
@@ -95,7 +103,12 @@ func NewSkillsLoader(workspace string, globalSkills string, builtinSkills string
 }
 
 func (sl *SkillsLoader) ListSkills() []SkillInfo {
-	skills := make([]SkillInfo, 0)
+	type candidate struct {
+		info SkillInfo
+		prio int
+	}
+
+	found := make([]candidate, 0, 16)
 	seen := make(map[string]bool)
 
 	addSkills := func(dir, source string) {
@@ -132,7 +145,7 @@ func (sl *SkillsLoader) ListSkills() []SkillInfo {
 				continue
 			}
 			seen[info.Name] = true
-			skills = append(skills, info)
+			found = append(found, candidate{info: info, prio: sourcePriority[source]})
 		}
 	}
 
@@ -141,6 +154,17 @@ func (sl *SkillsLoader) ListSkills() []SkillInfo {
 	addSkills(sl.globalSkills, "global")
 	addSkills(sl.builtinSkills, "builtin")
 
+	sort.SliceStable(found, func(i, j int) bool {
+		if found[i].prio != found[j].prio {
+			return found[i].prio < found[j].prio
+		}
+		return found[i].info.Name < found[j].info.Name
+	})
+
+	skills := make([]SkillInfo, 0, len(found))
+	for _, c := range found {
+		skills = append(skills, c.info)
+	}
 	return skills
 }
 
@@ -234,7 +258,7 @@ func (sl *SkillsLoader) getSkillMetadata(skillPath string) *SkillMetadata {
 
 	metadata := &SkillMetadata{
 		Name:        dirName,
-		Description: bodyDescription,
+		Description: truncateDescription(bodyDescription),
 	}
 	if title != "" && namePattern.MatchString(title) && len(title) <= MaxNameLength {
 		metadata.Name = title
@@ -384,4 +408,18 @@ func escapeXML(s string) string {
 	s = strings.ReplaceAll(s, "<", "&lt;")
 	s = strings.ReplaceAll(s, ">", "&gt;")
 	return s
+}
+
+// truncateDescription clamps a skill description to MaxDescriptionLength so a
+// pathological SKILL.md cannot blow up the system prompt catalog.
+func truncateDescription(description string) string {
+	description = strings.TrimSpace(description)
+	if len(description) <= MaxDescriptionLength {
+		return description
+	}
+	truncated := description[:MaxDescriptionLength]
+	if idx := strings.LastIndexAny(truncated, " \t\n"); idx > 0 {
+		truncated = truncated[:idx]
+	}
+	return truncated + "…"
 }

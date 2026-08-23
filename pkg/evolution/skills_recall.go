@@ -32,6 +32,16 @@ func NewSkillsRecaller(workspace string) *SkillsRecaller {
 	}
 }
 
+// LoadSkill returns the current body of the named skill, resolving across
+// workspace, global, and builtin skill roots. Used by the online revisor to
+// inspect the skill being revised.
+func (r *SkillsRecaller) LoadSkill(name string) (string, bool) {
+	if r == nil || r.loader == nil {
+		return "", false
+	}
+	return r.loader.LoadSkill(name)
+}
+
 func (r *SkillsRecaller) RecallSimilarSkills(rule LearningRecord) ([]skills.SkillInfo, error) {
 	if r == nil || r.loader == nil {
 		return nil, nil

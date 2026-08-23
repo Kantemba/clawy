@@ -34,6 +34,10 @@ type RuntimeOptions struct {
 	SuccessJudgeFactory func(workspace string) SuccessJudge
 	Applier             *Applier
 	ApplierFactory      func(workspace string) *Applier
+	Revisor             SkillRevisor
+	RevisorFactory      func(workspace string) SkillRevisor
+	Curator             IdentityCurator
+	CuratorFactory      func(workspace string) IdentityCurator
 }
 
 type Runtime struct {
@@ -51,6 +55,10 @@ type Runtime struct {
 	successJudgeFactory func(workspace string) SuccessJudge
 	applier             *Applier
 	applierFactory      func(workspace string) *Applier
+	revisor             SkillRevisor
+	revisorFactory      func(workspace string) SkillRevisor
+	curator             IdentityCurator
+	curatorFactory      func(workspace string) IdentityCurator
 }
 
 type TurnCaseInput struct {
@@ -103,6 +111,10 @@ func NewRuntime(opts RuntimeOptions) (*Runtime, error) {
 		successJudgeFactory: opts.SuccessJudgeFactory,
 		applier:             opts.Applier,
 		applierFactory:      opts.ApplierFactory,
+		revisor:             opts.Revisor,
+		revisorFactory:      opts.RevisorFactory,
+		curator:             opts.Curator,
+		curatorFactory:      opts.CuratorFactory,
 	}, nil
 }
 
@@ -153,6 +165,213 @@ func (rt *Runtime) FinalizeTurn(ctx context.Context, input TurnCaseInput) error 
 		"used_skills": len(record.UsedSkillNames),
 	})
 	return nil
+}
+
+// ReviseSkillOnFailure is the online half of the learning loop. When a turn
+// fails while one or more learned skills were active, it generates a targeted
+// revision draft for the first active skill whose body exists on disk and —
+// when the configured mode auto-applies drafts — writes the patch into the live
+// skill immediately, closing the loop before the next use.
+//
+// It is a no-op (returning a zero result) when evolution is disabled, online
+// revision is off, the turn succeeded, no active skills were loaded, or the
+// primary skill's body cannot be read.
+func (rt *Runtime) ReviseSkillOnFailure(ctx context.Context, input TurnCaseInput) (SkillFeedbackResult, error) {
+	if rt == nil || !rt.cfg.Enabled || !rt.cfg.EffectiveOnlineRevision() {
+		return SkillFeedbackResult{}, nil
+	}
+	if input.Workspace == "" {
+		return SkillFeedbackResult{}, nil
+	}
+	if input.Status == "completed" {
+		return SkillFeedbackResult{}, nil
+	}
+
+	candidates := filterValidSkillNames(input.ActiveSkillNames)
+	if len(candidates) == 0 {
+		return SkillFeedbackResult{}, nil
+	}
+
+	workspace := input.Workspace
+	recaller := rt.skillsRecallerForWorkspace(workspace)
+	revisor := rt.revisorForWorkspace(workspace)
+	store := rt.storeForWorkspace(workspace)
+	applier := rt.applierForWorkspace(workspace)
+	rule := buildRevisionLearningRecord(input, workspace, rt.now())
+	matches, _ := recaller.RecallSimilarSkills(rule)
+
+	for _, skillName := range candidates {
+		body, ok := recaller.LoadSkill(skillName)
+		if !ok || strings.TrimSpace(body) == "" {
+			continue
+		}
+		feedback := SkillFeedbackInput{
+			Workspace:      workspace,
+			SkillName:      skillName,
+			SkillBody:      body,
+			TaskSummary:    rule.Summary,
+			FailureSummary: buildFailureSummary(input),
+			FinalOutput:    summarizeText(input.FinalContent, 1200),
+			ToolKinds:      append([]string(nil), input.ToolKinds...),
+			ToolExecutions: append([]ToolExecutionRecord(nil), input.ToolExecutions...),
+		}
+
+		draft, err := revisor.Revise(ctx, feedback, matches)
+		if err != nil || draft.TargetSkillName == "" || len(ValidateDraft(draft)) > 0 {
+			logger.WarnCF("evolution", "Online skill revision produced no valid draft", map[string]any{
+				"workspace":  workspace,
+				"skill_name": skillName,
+				"error":      errToString(err),
+			})
+			continue
+		}
+		draft = rt.finalizeRevisionDraft(workspace, input.TurnID, skillName, draft)
+
+		review := ReviewDraft(draft)
+		draft.Status = review.Status
+		draft.ScanFindings = appendUniqueStrings(draft.ScanFindings, review.Findings...)
+
+		applied := false
+		if draft.Status == DraftStatusCandidate && rt.cfg.AutoAppliesDrafts() && applier != nil {
+			if applyErr := applier.ApplyDraft(ctx, workspace, draft); applyErr == nil {
+				applied = true
+				_ = rt.saveAppliedProfile(store, workspace, draft)
+			} else {
+				draft.Status = DraftStatusQuarantined
+				draft.ScanFindings = appendUniqueStrings(draft.ScanFindings, fmt.Sprintf("apply failed: %v", applyErr))
+				logger.WarnCF("evolution", "Online skill revision apply failed", map[string]any{
+					"workspace":  workspace,
+					"skill_name": skillName,
+					"error":      applyErr.Error(),
+				})
+			}
+		}
+		if store != nil && (applied || draft.Status == DraftStatusQuarantined) {
+			_ = store.SaveDrafts([]SkillDraft{draft})
+		}
+
+		logger.InfoCF("evolution", "Online skill revision generated", map[string]any{
+			"workspace":   workspace,
+			"skill_name":  skillName,
+			"change_kind": string(draft.ChangeKind),
+			"draft_id":    draft.ID,
+			"applied":     applied,
+			"status":      string(draft.Status),
+		})
+		return SkillFeedbackResult{Draft: draft, Applied: applied}, nil
+	}
+	return SkillFeedbackResult{}, nil
+}
+
+func filterValidSkillNames(names []string) []string {
+	out := make([]string, 0, len(names))
+	seen := make(map[string]struct{}, len(names))
+	for _, name := range names {
+		name = strings.TrimSpace(name)
+		if name == "" {
+			continue
+		}
+		if err := skills.ValidateSkillName(name); err != nil {
+			continue
+		}
+		key := strings.ToLower(name)
+		if _, ok := seen[key]; ok {
+			continue
+		}
+		seen[key] = struct{}{}
+		out = append(out, name)
+	}
+	return out
+}
+
+func buildRevisionLearningRecord(input TurnCaseInput, workspace string, now time.Time) LearningRecord {
+	summary := buildRecordSummary(input)
+	return LearningRecord{
+		ID:          buildTaskRecordID(input, now),
+		Kind:        RecordKindTask,
+		WorkspaceID: workspace,
+		CreatedAt:   now,
+		Status:      RecordStatus("new"),
+		Success:     ptrBool(input.Status != "completed"),
+		Summary:     summary,
+		FinalOutput: summarizeText(input.FinalContent, 1200),
+		ToolKinds:   append([]string(nil), input.ToolKinds...),
+	}
+}
+
+func buildFailureSummary(input TurnCaseInput) string {
+	var errs []string
+	for _, exec := range input.ToolExecutions {
+		if exec.Success {
+			continue
+		}
+		summary := exec.ErrorSummary
+		if summary == "" {
+			summary = "failed"
+		}
+		entry := exec.Name
+		if entry == "" {
+			entry = "tool"
+		}
+		errs = append(errs, entry+" "+summary)
+	}
+	joined := strings.Join(errs, "; ")
+	if joined == "" {
+		return "the turn did not reach a successful conclusion"
+	}
+	return joined
+}
+
+func (rt *Runtime) finalizeRevisionDraft(workspace, turnID, skillName string, draft SkillDraft) SkillDraft {
+	if draft.ID == "" {
+		draft.ID = fmt.Sprintf("rev-%s-%s", skillName, turnID)
+	}
+	if draft.CreatedAt.IsZero() {
+		draft.CreatedAt = rt.now()
+	}
+	draft.WorkspaceID = workspace
+	draft.SourceRecordID = buildTaskRecordID(TurnCaseInput{Workspace: workspace, TurnID: turnID}, draft.CreatedAt)
+	return draft
+}
+
+func errToString(err error) string {
+	if err == nil {
+		return ""
+	}
+	return err.Error()
+}
+
+func ptrBool(v bool) *bool {
+	return &v
+}
+
+// CurateIdentity is the online identity-layer entry point. When evolution is
+// enabled and online identity curation is on, it persists worth-keeping agent
+// facts (into SOUL.md) and user facts (into USER.md) for a successful turn.
+//
+// It is a no-op when evolution/identity curation is disabled, the turn was not
+// successful, or no curator is configured (e.g. no LLM provider).
+func (rt *Runtime) CurateIdentity(ctx context.Context, input IdentityCurateInput) (IdentityCurateResult, error) {
+	if rt == nil || !rt.cfg.Enabled || !rt.cfg.EffectiveIdentityCuration() {
+		return IdentityCurateResult{}, nil
+	}
+	if !input.Success || input.Workspace == "" {
+		return IdentityCurateResult{}, nil
+	}
+	curator := rt.curatorForWorkspace(input.Workspace)
+	if curator == nil {
+		return IdentityCurateResult{}, nil
+	}
+	return curator.Curate(ctx, input)
+}
+
+func (rt *Runtime) curatorForWorkspace(workspace string) IdentityCurator {
+	if rt.curatorFactory != nil {
+		if curator := rt.curatorFactory(workspace); curator != nil {
+			return curator
+		}
+	}
+	return rt.curator
 }
 
 func buildTaskRecordID(input TurnCaseInput, createdAt time.Time) string {
@@ -731,6 +950,15 @@ func (rt *Runtime) applierForWorkspace(workspace string) *Applier {
 		}
 	}
 	return rt.applier
+}
+
+func (rt *Runtime) revisorForWorkspace(workspace string) SkillRevisor {
+	if rt.revisorFactory != nil {
+		if revisor := rt.revisorFactory(workspace); revisor != nil {
+			return revisor
+		}
+	}
+	return rt.revisor
 }
 
 func (rt *Runtime) finalizeDraft(
