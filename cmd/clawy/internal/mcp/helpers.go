@@ -72,6 +72,23 @@ const mcpConfigSchemaJSON = `{
                   "headers": {
                     "type": "object",
                     "additionalProperties": { "type": "string" }
+                  },
+                  "oauth": {
+                    "type": "object",
+                    "properties": {
+                      "enabled": { "type": "boolean" },
+                      "client_id": { "type": "string" },
+                      "client_secret": { "type": "string" },
+                      "scopes": {
+                        "type": "array",
+                        "items": { "type": "string" }
+                      },
+                      "issuer": { "type": "string" },
+                      "callback_port": { "type": "integer" },
+                      "redirect_path": { "type": "string" },
+                      "no_browser": { "type": "boolean" }
+                    },
+                    "additionalProperties": false
                   }
                 },
                 "required": ["enabled"],

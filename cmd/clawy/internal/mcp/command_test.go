@@ -33,6 +33,9 @@ func TestNewMCPCommand(t *testing.T) {
 		"edit",
 		"test",
 		"show",
+		"serve",
+		"auth",
+		"logout",
 	}
 
 	subcommands := cmd.Commands()

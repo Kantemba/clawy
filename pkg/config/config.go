@@ -1366,6 +1366,80 @@ type MCPServerConfig struct {
 	URL string `json:"url,omitempty"`
 	// Headers are HTTP headers to send with requests (sse/http only)
 	Headers map[string]string `json:"headers,omitempty"`
+	// OAuth configures OAuth 2.0 authorization for remote (sse/http) MCP
+	// servers following the MCP authorization specification. When set, Clawy
+	// discovers the authorization server via protected resource metadata,
+	// registers or re-uses an OAuth client, obtains tokens using the
+	// authorization code flow with PKCE, and attaches them as bearer tokens
+	// automatically.
+	OAuth *MCPOAuthConfig `json:"oauth,omitempty"`
+}
+
+// DefaultMCPOAuthRedirectPath is the path used for the localhost OAuth
+// callback redirect URI when no explicit path is configured.
+const DefaultMCPOAuthRedirectPath = "/callback"
+
+// DefaultMCPOAuthCallbackPort is the TCP port used for the localhost OAuth
+// callback listener when no explicit port is configured.
+const DefaultMCPOAuthCallbackPort = 19877
+
+// MCPOAuthConfig defines OAuth 2.0 client settings for a remote MCP server.
+type MCPOAuthConfig struct {
+	// Enabled controls whether OAuth is used for this server. It defaults to
+	// true when an oauth block is present.
+	Enabled *bool `json:"enabled,omitempty"`
+	// ClientID is a pre-registered OAuth client id. When empty, Clawy attempts
+	// dynamic client registration (RFC 7591) with the authorization server.
+	ClientID string `json:"client_id,omitempty"`
+	// ClientSecret is the secret for confidential clients. Public clients
+	// (the default) omit it.
+	ClientSecret string `json:"client_secret,omitempty"`
+	// Scopes are the OAuth scopes to request during authorization.
+	Scopes []string `json:"scopes,omitempty"`
+	// Issuer optionally overrides the authorization server issuer URL. When
+	// empty, the authorization server is discovered from the MCP server's
+	// protected resource metadata (RFC 9728).
+	Issuer string `json:"issuer,omitempty"`
+	// CallbackPort is the TCP port for the localhost OAuth callback listener.
+	// Defaults to DefaultMCPOAuthCallbackPort.
+	CallbackPort int `json:"callback_port,omitempty"`
+	// RedirectPath is the path of the localhost redirect URI. Defaults to
+	// DefaultMCPOAuthRedirectPath ("/callback").
+	RedirectPath string `json:"redirect_path,omitempty"`
+	// NoBrowser disables automatically opening the authorization URL in a
+	// browser; the URL is printed so the user can open it manually.
+	NoBrowser bool `json:"no_browser,omitempty"`
+}
+
+// IsEnabled reports whether OAuth authorization is enabled for this config.
+func (o *MCPOAuthConfig) IsEnabled() bool {
+	if o == nil {
+		return false
+	}
+	if o.Enabled != nil {
+		return *o.Enabled
+	}
+	return true
+}
+
+// EffectiveRedirectPath returns the normalized redirect path.
+func (o *MCPOAuthConfig) EffectiveRedirectPath() string {
+	if o == nil || strings.TrimSpace(o.RedirectPath) == "" {
+		return DefaultMCPOAuthRedirectPath
+	}
+	p := strings.TrimSpace(o.RedirectPath)
+	if !strings.HasPrefix(p, "/") {
+		p = "/" + p
+	}
+	return p
+}
+
+// EffectiveCallbackPort returns the callback listener port.
+func (o *MCPOAuthConfig) EffectiveCallbackPort() int {
+	if o == nil || o.CallbackPort <= 0 {
+		return DefaultMCPOAuthCallbackPort
+	}
+	return o.CallbackPort
 }
 
 // MCPConfig defines configuration for all MCP servers

@@ -3,6 +3,7 @@ package mcp
 import (
 	"fmt"
 	"net/url"
+	"strconv"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -17,6 +18,54 @@ type addOptions struct {
 	Transport string
 	Force     bool
 	Deferred  *bool // nil = not set, true = deferred, false = not deferred
+
+	oauthEnabled      *bool // nil = not set, true = --oauth, false = --no-oauth
+	oauthClientID     string
+	oauthClientSecret string
+	oauthScopes       []string
+	oauthIssuer       string
+	oauthPort         int
+	oauthRedirectPath string
+	oauthNoBrowser    bool
+	oauthSeen         bool // any --oauth* flag was provided
+}
+
+// buildOAuthConfig assembles the OAuth configuration from --oauth* flags.
+// It returns nil when no OAuth flag was provided at all.
+func (o *addOptions) buildOAuthConfig() *config.MCPOAuthConfig {
+	if !o.oauthSeen {
+		return nil
+	}
+	return &config.MCPOAuthConfig{
+		Enabled:      o.oauthEnabled,
+		ClientID:     o.oauthClientID,
+		ClientSecret: o.oauthClientSecret,
+		Scopes:       append([]string(nil), o.oauthScopes...),
+		Issuer:       o.oauthIssuer,
+		CallbackPort: o.oauthPort,
+		RedirectPath: o.oauthRedirectPath,
+		NoBrowser:    o.oauthNoBrowser,
+	}
+}
+
+// nextFlagValue consumes the value following a space-separated flag.
+func nextFlagValue(args []string, i *int, flag string) (string, error) {
+	if *i+1 >= len(args) {
+		return "", fmt.Errorf("missing value for %s", flag)
+	}
+	*i++
+	return args[*i], nil
+}
+
+// appendOAuthScopes splits a raw scope list on commas and whitespace and
+// appends the entries to dst.
+func appendOAuthScopes(dst []string, raw string) []string {
+	for _, part := range strings.FieldsFunc(raw, func(r rune) bool {
+		return r == ',' || r == ' ' || r == '\t'
+	}) {
+		dst = append(dst, part)
+	}
+	return dst
 }
 
 func newAddCommand() *cobra.Command {
@@ -78,6 +127,15 @@ func newAddCommand() *cobra.Command {
 	flags.BoolP("force", "f", false, "Overwrite an existing server without prompting")
 	flags.Bool("deferred", false, "Mark server as deferred (tools hidden until explicitly activated)")
 	flags.Bool("no-deferred", false, "Mark server as non-deferred (tools always active)")
+	flags.Bool("oauth", false, "Enable OAuth authentication (sse/http servers only)")
+	flags.Bool("no-oauth", false, "Explicitly disable OAuth authentication")
+	flags.String("oauth-client-id", "", "Pre-registered OAuth client id")
+	flags.String("oauth-client-secret", "", "OAuth client secret for confidential clients")
+	flags.String("oauth-scopes", "", "OAuth scopes to request (comma or space separated, repeatable)")
+	flags.String("oauth-issuer", "", "Authorization server issuer URL override")
+	flags.Int("oauth-port", 0, "TCP port for the localhost OAuth callback listener")
+	flags.String("oauth-redirect-path", "", "Path of the localhost OAuth callback URI (default /callback)")
+	flags.Bool("oauth-no-browser", false, "Do not open the browser automatically during OAuth")
 
 	return cmd
 }
@@ -139,6 +197,77 @@ func parseAddArgs(args []string) (addOptions, string, string, []string, bool, er
 			opts.Headers = append(opts.Headers, args[i])
 		case strings.HasPrefix(arg, "--header="):
 			opts.Headers = append(opts.Headers, strings.TrimPrefix(arg, "--header="))
+		case arg == "--oauth":
+			t := true
+			opts.oauthEnabled, opts.oauthSeen = &t, true
+		case arg == "--no-oauth":
+			f := false
+			opts.oauthEnabled, opts.oauthSeen = &f, true
+		case arg == "--oauth-client-id":
+			v, verr := nextFlagValue(args, &i, arg)
+			if verr != nil {
+				return addOptions{}, "", "", nil, false, verr
+			}
+			opts.oauthClientID, opts.oauthSeen = v, true
+		case strings.HasPrefix(arg, "--oauth-client-id="):
+			opts.oauthClientID = strings.TrimPrefix(arg, "--oauth-client-id=")
+			opts.oauthSeen = true
+		case arg == "--oauth-client-secret":
+			v, verr := nextFlagValue(args, &i, arg)
+			if verr != nil {
+				return addOptions{}, "", "", nil, false, verr
+			}
+			opts.oauthClientSecret, opts.oauthSeen = v, true
+		case strings.HasPrefix(arg, "--oauth-client-secret="):
+			opts.oauthClientSecret = strings.TrimPrefix(arg, "--oauth-client-secret=")
+			opts.oauthSeen = true
+		case arg == "--oauth-issuer":
+			v, verr := nextFlagValue(args, &i, arg)
+			if verr != nil {
+				return addOptions{}, "", "", nil, false, verr
+			}
+			opts.oauthIssuer, opts.oauthSeen = v, true
+		case strings.HasPrefix(arg, "--oauth-issuer="):
+			opts.oauthIssuer = strings.TrimPrefix(arg, "--oauth-issuer=")
+			opts.oauthSeen = true
+		case arg == "--oauth-redirect-path":
+			v, verr := nextFlagValue(args, &i, arg)
+			if verr != nil {
+				return addOptions{}, "", "", nil, false, verr
+			}
+			opts.oauthRedirectPath, opts.oauthSeen = v, true
+		case strings.HasPrefix(arg, "--oauth-redirect-path="):
+			opts.oauthRedirectPath = strings.TrimPrefix(arg, "--oauth-redirect-path=")
+			opts.oauthSeen = true
+		case arg == "--oauth-scopes":
+			v, verr := nextFlagValue(args, &i, arg)
+			if verr != nil {
+				return addOptions{}, "", "", nil, false, verr
+			}
+			opts.oauthScopes = appendOAuthScopes(opts.oauthScopes, v)
+			opts.oauthSeen = true
+		case strings.HasPrefix(arg, "--oauth-scopes="):
+			opts.oauthScopes = appendOAuthScopes(opts.oauthScopes, strings.TrimPrefix(arg, "--oauth-scopes="))
+			opts.oauthSeen = true
+		case arg == "--oauth-port":
+			v, verr := nextFlagValue(args, &i, arg)
+			if verr != nil {
+				return addOptions{}, "", "", nil, false, verr
+			}
+			portVal, perr := strconv.Atoi(strings.TrimSpace(v))
+			if perr != nil || portVal < 0 {
+				return addOptions{}, "", "", nil, false, fmt.Errorf("invalid value for %s: %q", arg, v)
+			}
+			opts.oauthPort, opts.oauthSeen = portVal, true
+		case strings.HasPrefix(arg, "--oauth-port="):
+			rawPort := strings.TrimPrefix(arg, "--oauth-port=")
+			portVal, perr := strconv.Atoi(strings.TrimSpace(rawPort))
+			if perr != nil || portVal < 0 {
+				return addOptions{}, "", "", nil, false, fmt.Errorf("invalid value for --oauth-port: %q", rawPort)
+			}
+			opts.oauthPort, opts.oauthSeen = portVal, true
+		case arg == "--oauth-no-browser":
+			opts.oauthNoBrowser, opts.oauthSeen = true, true
 		case strings.HasPrefix(arg, "-") && len(positional) >= 2:
 			serverArgs = append(serverArgs, args[i:]...)
 			i = len(args)
@@ -215,11 +344,16 @@ func buildServerConfig(target string, args []string, opts addOptions) (config.MC
 		}
 		server.URL = target
 		server.Headers = headers
+		server.OAuth = opts.buildOAuthConfig()
 		return server, nil
 	}
 
 	if len(headers) > 0 {
 		return config.MCPServerConfig{}, fmt.Errorf("--header can only be used with http or sse transport")
+	}
+
+	if opts.oauthSeen {
+		return config.MCPServerConfig{}, fmt.Errorf("--oauth options can only be used with http or sse transport")
 	}
 
 	if looksLikeRemoteURL(target) {

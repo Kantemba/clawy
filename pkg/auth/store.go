@@ -20,6 +20,14 @@ type AuthCredential struct {
 	AuthMethod   string    `json:"auth_method"`
 	Email        string    `json:"email,omitempty"`
 	ProjectID    string    `json:"project_id,omitempty"`
+	// OAuth client registration metadata. These fields are populated for
+	// credentials obtained through generic OAuth 2.0 flows (e.g. remote MCP
+	// servers) so that tokens can be refreshed and clients re-used without
+	// re-registering. All fields are optional.
+	ClientID     string   `json:"client_id,omitempty"`
+	ClientSecret string   `json:"client_secret,omitempty"`
+	TokenEndpoint string  `json:"token_endpoint,omitempty"`
+	Scopes       []string `json:"scopes,omitempty"`
 }
 
 type AuthStore struct {
@@ -99,6 +107,18 @@ func mergeCredentials(primary, secondary *AuthCredential) *AuthCredential {
 	}
 	if merged.ProjectID == "" {
 		merged.ProjectID = secondary.ProjectID
+	}
+	if merged.ClientID == "" {
+		merged.ClientID = secondary.ClientID
+	}
+	if merged.ClientSecret == "" {
+		merged.ClientSecret = secondary.ClientSecret
+	}
+	if merged.TokenEndpoint == "" {
+		merged.TokenEndpoint = secondary.TokenEndpoint
+	}
+	if len(merged.Scopes) == 0 {
+		merged.Scopes = secondary.Scopes
 	}
 
 	return &merged

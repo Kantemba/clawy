@@ -296,6 +296,7 @@ func (m *Manager) ConnectServer(
 	m.publishServerEvent(runtimeevents.KindMCPServerConnecting, name, cfg, 0, nil)
 	conn, err := connectServerFunc(ctx, name, cfg)
 	if err != nil {
+		err = augmentConnectError(name, cfg, err)
 		m.publishServerEvent(runtimeevents.KindMCPServerFailed, name, cfg, 0, err)
 		return err
 	}
@@ -372,6 +373,27 @@ func connectServer(
 		sseTransport := &mcp.StreamableClientTransport{
 			Endpoint:             cfg.URL,
 			DisableStandaloneSSE: disableStandaloneSSE,
+		}
+
+		// OAuth authorization (MCP spec): attach a handler so the transport
+		// attaches bearer tokens automatically and can run the interactive
+		// authorization flow when the server answers 401/403.
+		oauthHandler, oauthErr := NewOAuthHandler(name, cfg)
+		if oauthErr != nil {
+			return nil, oauthErr
+		}
+		if oauthHandler != nil {
+			logger.InfoCF("mcp", "OAuth enabled for MCP server",
+				map[string]any{"server": name, "url": cfg.URL})
+			for headerKey := range cfg.Headers {
+				if strings.EqualFold(headerKey, "Authorization") {
+					logger.WarnCF("mcp",
+						"Both oauth and a static Authorization header are configured; the static header wins",
+						map[string]any{"server": name})
+					break
+				}
+			}
+			sseTransport.OAuthHandler = oauthHandler
 		}
 
 		// Add custom headers if provided
@@ -603,6 +625,31 @@ func shouldReconnectCallError(err error) bool {
 		return true
 	}
 	return strings.Contains(strings.ToLower(err.Error()), mcp.ErrSessionMissing.Error())
+}
+
+// augmentConnectError appends actionable hints for authentication failures on
+// remote MCP servers.
+func augmentConnectError(serverName string, cfg config.MCPServerConfig, err error) error {
+	if err == nil || cfg.URL == "" {
+		return err
+	}
+	if !cfg.OAuth.IsEnabled() && isAuthenticationConnectError(err) {
+		return fmt.Errorf(
+			"%w (the server requires authorization; run 'clawy mcp add %s --oauth' and then 'clawy mcp auth %s')",
+			err, serverName, serverName)
+	}
+	return err
+}
+
+func isAuthenticationConnectError(err error) bool {
+	if err == nil {
+		return false
+	}
+	msg := strings.ToLower(err.Error())
+	return strings.Contains(msg, "401") ||
+		strings.Contains(msg, "403") ||
+		strings.Contains(msg, "unauthorized") ||
+		strings.Contains(msg, "forbidden")
 }
 
 func (m *Manager) reconnectServer(
