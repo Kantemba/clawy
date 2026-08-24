@@ -1,14 +1,18 @@
 package logger
 
 import (
+	"context"
 	"fmt"
 	"io"
+	"maps"
 	"os"
 	"path/filepath"
 	"runtime"
 	"strconv"
 	"strings"
 	"sync"
+
+	oteltrace "go.opentelemetry.io/otel/trace"
 
 	"github.com/Kantemba/clawy/pkg/security"
 	"github.com/rs/zerolog"
@@ -220,6 +224,45 @@ func DisableFileLogging() {
 		writers = writers[:1]
 		logger = logger.Output(io.MultiWriter(writers...))
 	}
+}
+
+// AttachSink registers an additional writer (e.g. an OpenTelemetry log
+// bridge) alongside the console and file outputs.
+func AttachSink(w io.Writer) {
+	if w == nil {
+		return
+	}
+	mu.Lock()
+	defer mu.Unlock()
+
+	for _, existing := range writers {
+		if existing == w {
+			return
+		}
+	}
+	writers = append(writers, w)
+	logger = logger.Output(io.MultiWriter(writers...))
+}
+
+// DetachSink removes a previously attached writer.
+func DetachSink(w io.Writer) {
+	if w == nil {
+		return
+	}
+	mu.Lock()
+	defer mu.Unlock()
+
+	filtered := make([]io.Writer, 0, len(writers))
+	for _, existing := range writers {
+		if existing != w {
+			filtered = append(filtered, existing)
+		}
+	}
+	if len(filtered) == len(writers) {
+		return
+	}
+	writers = filtered
+	logger = logger.Output(io.MultiWriter(writers...))
 }
 
 func ConfigureFromEnv() {
@@ -467,4 +510,50 @@ func FatalF(message string, fields map[string]any) {
 
 func FatalCF(component string, message string, fields map[string]any) {
 	logMessage(FATAL, component, message, fields)
+}
+
+// traceFieldsFromContext returns trace correlation fields when the context
+// carries a valid span, so exported log records can be linked to traces.
+func traceFieldsFromContext(ctx context.Context) map[string]any {
+	if ctx == nil {
+		return nil
+	}
+	sc := oteltrace.SpanContextFromContext(ctx)
+	if !sc.IsValid() {
+		return nil
+	}
+	return map[string]any{
+		"trace_id": sc.TraceID().String(),
+		"span_id":  sc.SpanID().String(),
+	}
+}
+
+func logWithContext(level LogLevel, ctx context.Context, component, message string, fields map[string]any) {
+	if traceFields := traceFieldsFromContext(ctx); len(traceFields) > 0 {
+		if fields == nil {
+			fields = traceFields
+		} else {
+			merged := make(map[string]any, len(fields)+2)
+			maps.Copy(merged, fields)
+			maps.Copy(merged, traceFields)
+			fields = merged
+		}
+	}
+	logMessage(level, component, message, fields)
+}
+
+func DebugCFCtx(ctx context.Context, component string, message string, fields map[string]any) {
+	logWithContext(DEBUG, ctx, component, message, fields)
+}
+
+func InfoCFCtx(ctx context.Context, component string, message string, fields map[string]any) {
+	logWithContext(INFO, ctx, component, message, fields)
+}
+
+func WarnCFCtx(ctx context.Context, component string, message string, fields map[string]any) {
+	logWithContext(WARN, ctx, component, message, fields)
+}
+
+func ErrorCFCtx(ctx context.Context, component string, message string, fields map[string]any) {
+	logWithContext(ERROR, ctx, component, message, fields)
 }

@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"time"
 )
 
@@ -56,12 +57,9 @@ func WriteFileAtomic(path string, data []byte, perm os.FileMode) error {
 	}
 
 	// Create temp file in the same directory (ensures atomic rename works)
-	// Using a hidden prefix (.tmp-) to avoid issues with some tools
-	tmpFile, err := os.OpenFile(
-		filepath.Join(dir, fmt.Sprintf(".tmp-%d-%d", os.Getpid(), time.Now().UnixNano())),
-		os.O_WRONLY|os.O_CREATE|os.O_EXCL,
-		perm,
-	)
+	// os.CreateTemp guarantees a unique name, which matters on Windows where
+	// timestamp-based names can collide due to coarse clock granularity.
+	tmpFile, err := os.CreateTemp(dir, ".tmp-*")
 	if err != nil {
 		return fmt.Errorf("failed to create temp file: %w", err)
 	}
@@ -101,8 +99,10 @@ func WriteFileAtomic(path string, data []byte, perm os.FileMode) error {
 
 	// Atomic rename: temp file becomes the target
 	// On POSIX: rename() is atomic
-	// On Windows: Rename() is atomic for files
-	if err := os.Rename(tmpPath, path); err != nil {
+	// On Windows: Rename() is atomic for files, but transiently fails when
+	// another handle briefly holds the destination open (concurrent writers,
+	// antivirus scanners). Retry with backoff before giving up.
+	if err := renameWithRetry(tmpPath, path); err != nil {
 		return fmt.Errorf("failed to rename temp file: %w", err)
 	}
 
@@ -124,4 +124,23 @@ func CopyFile(src, dst string, perm os.FileMode) error {
 		return err
 	}
 	return WriteFileAtomic(dst, data, perm)
+}
+
+// renameAttempts bounds the retry budget for transient Windows rename
+// failures; each attempt backs off a little longer.
+const renameAttempts = 5
+
+// renameWithRetry retries os.Rename on Windows where the destination can be
+// momentarily locked by another handle (sharing violation). POSIX renames do
+// not exhibit this and are attempted exactly once.
+func renameWithRetry(oldPath, newPath string) error {
+	var err error
+	for attempt := 0; attempt < renameAttempts; attempt++ {
+		err = os.Rename(oldPath, newPath)
+		if err == nil || runtime.GOOS != "windows" {
+			return err
+		}
+		time.Sleep(time.Duration(attempt+1) * 10 * time.Millisecond)
+	}
+	return err
 }

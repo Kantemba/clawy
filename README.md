@@ -514,6 +514,19 @@ Talk to your Clawy through 20+ messaging platforms:
 
 > Log verbosity is controlled by `gateway.log_level` (default: `warn`). Supported values: `debug`, `info`, `warn`, `error`, `fatal`. Can also be set via `CLAWY_LOG_LEVEL`. See [Configuration](docs/guides/configuration.md#gateway-log-level) for details.
 
+> **OpenTelemetry**: Clawy exports distributed traces, metrics, and logs over OTLP (gRPC on `:4317` or HTTP/protobuf on `:4318`). Enable it in `config.json`:
+>
+> ```json
+> "telemetry": {
+>   "enabled": true,
+>   "endpoint": "localhost:4317",
+>   "protocol": "grpc",
+>   "sample_ratio": 1.0
+> }
+> ```
+>
+> Instrumented out of the box: agent turn spans (`agent.turn`, `llm.call`), the shared gateway HTTP server (request traces + RED metrics), message bus counters, Go runtime metrics, and all application logs (with trace-ID correlation). Standard `OTEL_SERVICE_NAME`, `OTEL_EXPORTER_OTLP_ENDPOINT`, `OTEL_EXPORTER_OTLP_HEADERS`, and friends are honored as fallbacks; `CLAWY_TELEMETRY_*` variables override the config file. Works with any OTLP collector (Jaeger, Grafana Tempo, SigNoz, Honeycomb, Datadog, ...).
+
 For detailed channel setup instructions, see [Chat Apps Configuration](docs/guides/chat-apps.md).
 
 ## 🔧 Tools

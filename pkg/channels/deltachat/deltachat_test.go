@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -15,6 +16,15 @@ import (
 	"github.com/Kantemba/clawy/pkg/config"
 	"github.com/Kantemba/clawy/pkg/media"
 )
+
+// fakeServerName returns a name that exec.LookPath can resolve on the current
+// platform (Windows requires a PATHEXT executable extension).
+func fakeServerName() string {
+	if runtime.GOOS == "windows" {
+		return "deltachat-rpc-server.exe"
+	}
+	return "deltachat-rpc-server"
+}
 
 func TestNewDeltaChatChannel(t *testing.T) {
 	msgBus := bus.NewMessageBus()
@@ -91,7 +101,7 @@ func TestNewDeltaChatChannel(t *testing.T) {
 
 func TestResolveServerPathUsesPATH(t *testing.T) {
 	dir := t.TempDir()
-	fakeServer := filepath.Join(dir, "deltachat-rpc-server")
+	fakeServer := filepath.Join(dir, fakeServerName())
 	if err := os.WriteFile(fakeServer, []byte("#!/bin/sh\n"), 0o755); err != nil {
 		t.Fatal(err)
 	}

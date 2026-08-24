@@ -4,11 +4,18 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
 
 func TestRunIntegrationTestsScriptExecutesSuiteCommand(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		// The runner is a POSIX bash script (shebang, sh stubs); Windows
+		// bash variants (WSL/MSYS) cannot execute it via a Windows path.
+		t.Skip("POSIX bash script; run on Linux/macOS")
+	}
+
 	bashPath, err := exec.LookPath("bash")
 	if err != nil {
 		t.Skip("bash not available")

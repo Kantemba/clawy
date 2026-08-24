@@ -5,6 +5,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"testing"
 
 	"github.com/Kantemba/clawy/pkg"
@@ -17,8 +18,9 @@ func TestResolveInstanceRoot_UsesClawHome(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ResolveInstanceRoot() error = %v", err)
 	}
-	if root != "/custom/clawy/home" {
-		t.Fatalf("ResolveInstanceRoot() = %q, want %q", root, "/custom/clawy/home")
+	// ResolveInstanceRoot runs filepath.Clean, which yields OS-native separators.
+	if want := filepath.FromSlash("/custom/clawy/home"); root != want {
+		t.Fatalf("ResolveInstanceRoot() = %q, want %q", root, want)
 	}
 }
 
@@ -77,21 +79,33 @@ func TestIsSupportedOn(t *testing.T) {
 	}
 }
 
+// platformAbsPath returns an absolute path acceptable to the running OS
+// (Windows requires a drive letter for filepath.IsAbs).
+func platformAbsPath(p string) string {
+	if runtime.GOOS == "windows" {
+		return `C:\` + filepath.FromSlash(strings.TrimPrefix(p, "/"))
+	}
+	return p
+}
+
 func TestValidateExposePaths(t *testing.T) {
-	err := ValidateExposePaths([]config.ExposePath{{Source: "/src", Target: "/dst", Mode: "ro"}})
+	source := platformAbsPath("/src")
+	target := platformAbsPath("/dst")
+
+	err := ValidateExposePaths([]config.ExposePath{{Source: source, Target: target, Mode: "ro"}})
 	if err != nil {
 		t.Fatalf("ValidateExposePaths() error = %v", err)
 	}
 
-	err = ValidateExposePaths([]config.ExposePath{{Source: "/src", Target: "/dst", Mode: "bad"}})
+	err = ValidateExposePaths([]config.ExposePath{{Source: source, Target: target, Mode: "bad"}})
 	if err == nil {
 		t.Fatal("ValidateExposePaths() expected invalid mode error")
 	}
 
 	err = ValidateExposePaths(
 		[]config.ExposePath{
-			{Source: "/src", Target: "/dst", Mode: "ro"},
-			{Source: "/other", Target: "/dst", Mode: "rw"},
+			{Source: source, Target: target, Mode: "ro"},
+			{Source: platformAbsPath("/other"), Target: target, Mode: "rw"},
 		},
 	)
 	if err == nil {
@@ -101,14 +115,17 @@ func TestValidateExposePaths(t *testing.T) {
 
 func TestMergeExposePaths_OverrideByTarget(t *testing.T) {
 	merged := MergeExposePaths(
-		[]config.ExposePath{{Source: "/src-a", Target: "/dst", Mode: "ro"}},
-		[]config.ExposePath{{Source: "/src-b", Target: "/dst", Mode: "rw"}},
+		[]config.ExposePath{{Source: platformAbsPath("/src-a"), Target: platformAbsPath("/dst"), Mode: "ro"}},
+		[]config.ExposePath{{Source: platformAbsPath("/src-b"), Target: platformAbsPath("/dst"), Mode: "rw"}},
 	)
 	if len(merged) != 1 {
 		t.Fatalf("MergeExposePaths len = %d, want 1", len(merged))
 	}
-	if got := merged[0]; got.Source != "/src-b" || got.Target != "/dst" || got.Mode != "rw" {
-		t.Fatalf("merged[0] = %+v, want source=/src-b target=/dst mode=rw", got)
+	wantSource := filepath.FromSlash(platformAbsPath("/src-b"))
+	wantTarget := filepath.FromSlash(platformAbsPath("/dst"))
+	got := merged[0]
+	if got.Source != wantSource || got.Target != wantTarget || got.Mode != "rw" {
+		t.Fatalf("merged[0] = %+v, want source=%q target=%q mode=rw", got, wantSource, wantTarget)
 	}
 }
 
@@ -214,6 +231,9 @@ func TestExistingExposePaths_SkipsMissingPaths(t *testing.T) {
 func TestPrepareCommand_AppliesUserEnv(t *testing.T) {
 	if !isSupportedOn(runtime.GOOS) {
 		t.Skipf("isolation not supported on %s", runtime.GOOS)
+	}
+	if runtime.GOOS == "windows" {
+		t.Skip("requires restricted-token creation, which is not guaranteed on Windows hosts")
 	}
 	t.Setenv(config.EnvHome, filepath.Join(t.TempDir(), "home"))
 	if runtime.GOOS == "linux" {

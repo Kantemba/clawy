@@ -10,6 +10,7 @@ import (
 
 	runtimeevents "github.com/Kantemba/clawy/pkg/events"
 	"github.com/Kantemba/clawy/pkg/logger"
+	"github.com/Kantemba/clawy/pkg/telemetry"
 )
 
 // ErrBusClosed is returned when publishing to a closed MessageBus.
@@ -197,6 +198,7 @@ func publish[T any](
 				"queue_capacity": queueCap,
 				"dropped_total":  droppedTotal,
 			})
+			telemetry.RecordMessageDropped(policy.stream)
 			return fmt.Errorf("%w: %s queue full after %s", ErrBusBackpressure, policy.stream, policy.timeout)
 		case <-mb.done:
 			return ErrBusClosed

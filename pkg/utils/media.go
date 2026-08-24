@@ -26,7 +26,7 @@ func AudioFormat(path string) (string, error) {
 		}
 	}
 
-	return "", fmt.Errorf("unsupported audio format for %q", path)
+	return "", fmt.Errorf("unsupported audio format for \"%s\"", path)
 }
 
 // IsAudioFile checks if a file is an audio file based on its filename extension and content type.

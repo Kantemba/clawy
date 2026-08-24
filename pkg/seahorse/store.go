@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"strings"
+	"sync/atomic"
 	"time"
 )
 
@@ -1701,8 +1702,12 @@ func (s *Store) scanSummaries(rows *sql.Rows) ([]Summary, error) {
 	return summaries, nil
 }
 
+// summaryIDSequence disambiguates summary IDs created within the same clock
+// tick, which is common on Windows where UnixNano granularity is coarse.
+var summaryIDSequence atomic.Uint64
+
 func generateSummaryID(content string, t time.Time) string {
-	return fmt.Sprintf("sum_%x", t.UnixNano())
+	return fmt.Sprintf("sum_%x_%x", t.UnixNano(), summaryIDSequence.Add(1))
 }
 
 func isUniqueViolation(err error) bool {

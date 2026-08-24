@@ -29,6 +29,7 @@ import (
 	"github.com/Kantemba/clawy/pkg/logger"
 	"github.com/Kantemba/clawy/pkg/media"
 	"github.com/Kantemba/clawy/pkg/pairing"
+	"github.com/Kantemba/clawy/pkg/telemetry"
 	"github.com/Kantemba/clawy/pkg/utils"
 )
 
@@ -1177,7 +1178,7 @@ func (m *Manager) SetupHTTPServerListeners(listeners []net.Listener, addr string
 
 	m.httpServer = &http.Server{
 		Addr:         addr,
-		Handler:      m.mux,
+		Handler:      telemetry.HTTPHandler(m.mux, "gateway.http"),
 		ReadTimeout:  30 * time.Second,
 		WriteTimeout: 30 * time.Second,
 	}

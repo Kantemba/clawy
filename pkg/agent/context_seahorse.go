@@ -157,6 +157,12 @@ func (m *seahorseContextManager) Ingest(ctx context.Context, req *IngestRequest)
 	return err
 }
 
+// Close releases the underlying engine resources (SQLite handle, background
+// compaction workers). It is invoked through io.Closer by AgentLoop.Close.
+func (m *seahorseContextManager) Close() error {
+	return m.engine.Close()
+}
+
 // Clear removes all stored context for a session (seahorse DB + JSONL).
 func (m *seahorseContextManager) Clear(ctx context.Context, sessionKey string) error {
 	if err := m.engine.ClearSession(ctx, sessionKey); err != nil {

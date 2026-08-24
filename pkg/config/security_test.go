@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/caarlos0/env/v11"
@@ -51,7 +52,9 @@ func TestSecurityPath(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := securityPath(tt.configDir)
-			assert.Equal(t, tt.want, got)
+			// securityPath uses filepath.Join, so the expected value must be
+			// converted to the OS-native separator style as well.
+			assert.Equal(t, filepath.FromSlash(tt.want), got)
 		})
 	}
 }
@@ -163,10 +166,17 @@ func TestSaveAndLoadSecurityConfig(t *testing.T) {
 		err := saveSecurityConfig(secPath, original)
 		require.NoError(t, err)
 
-		// Verify file was created with correct permissions
+		// Verify file was created with correct permissions. Unix permission
+		// bits are not honored on Windows (os.Stat always reports 0666 for
+		// regular files), so only assert the mode on platforms that support it.
 		info, err := os.Stat(secPath)
 		require.NoError(t, err)
-		assert.Equal(t, os.FileMode(0o600), info.Mode())
+		switch runtime.GOOS {
+		case "windows", "plan9", "js", "wasip1":
+			assert.True(t, info.Mode().IsRegular(), "expected a regular file")
+		default:
+			assert.Equal(t, os.FileMode(0o600), info.Mode())
+		}
 
 		file, err := os.ReadFile(secPath)
 		assert.NoError(t, err)

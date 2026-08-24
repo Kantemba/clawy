@@ -10,10 +10,14 @@ import (
 	"strings"
 	"time"
 
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
+
 	"github.com/Kantemba/clawy/pkg/constants"
 	runtimeevents "github.com/Kantemba/clawy/pkg/events"
 	"github.com/Kantemba/clawy/pkg/logger"
 	"github.com/Kantemba/clawy/pkg/providers"
+	"github.com/Kantemba/clawy/pkg/telemetry"
 )
 
 // CallLLM performs an LLM call with fallback support, hook invocation, and retry logic.
@@ -152,8 +156,8 @@ func (p *Pipeline) CallLLM(
 		})
 
 	// LLM call closure with fallback support
-	callLLM := func(messagesForCall []providers.Message, toolDefsForCall []providers.ToolDefinition) (*providers.LLMResponse, error) {
-		providerCtx, providerCancel := context.WithCancel(turnCtx)
+	callLLM := func(ctx context.Context, messagesForCall []providers.Message, toolDefsForCall []providers.ToolDefinition) (*providers.LLMResponse, error) {
+		providerCtx, providerCancel := context.WithCancel(ctx)
 		ts.setProviderCancel(providerCancel)
 		defer func() {
 			providerCancel()
@@ -266,7 +270,22 @@ func (p *Pipeline) CallLLM(
 		backoffSecs = 2
 	}
 	for retry := 0; retry <= maxRetries; retry++ {
-		exec.response, err = callLLM(exec.callMessages, exec.providerToolDefs)
+		attemptCtx, attemptSpan := telemetry.Tracer().Start(turnCtx, "llm.call",
+			trace.WithSpanKind(trace.SpanKindClient),
+			trace.WithAttributes(
+				attribute.String("clawy.model", exec.llmModel),
+				attribute.Int("clawy.attempt", retry+1),
+				attribute.Int("clawy.messages_count", len(exec.callMessages)),
+				attribute.Int("clawy.tools_count", len(exec.providerToolDefs)),
+			),
+		)
+		exec.response, err = callLLM(attemptCtx, exec.callMessages, exec.providerToolDefs)
+		telemetry.FinishSpan(attemptSpan, err)
+		llmProvider := ""
+		if len(exec.activeCandidates) > 0 {
+			llmProvider = exec.activeCandidates[0].Provider
+		}
+		telemetry.RecordLLMRequest(llmProvider, exec.llmModel)
 		if err == nil {
 			break
 		}

@@ -570,5 +570,19 @@
     "port": 18790,
     "hot_reload": false,
     "log_level": "fatal"
+  },
+  "telemetry": {
+    "_comment": "OpenTelemetry (OTLP). Enable to export traces, metrics and logs. Standard OTEL_EXPORTER_OTLP_ENDPOINT, OTEL_SERVICE_NAME, etc. env vars are honored as fallbacks.",
+    "enabled": false,
+    "service_name": "clawy",
+    "environment": "production",
+    "endpoint": "localhost:4317",
+    "protocol": "grpc",
+    "insecure": true,
+    "sample_ratio": 1.0,
+    "traces_enabled": true,
+    "metrics_enabled": true,
+    "logs_enabled": true,
+    "runtime_metrics": true
   }
 }

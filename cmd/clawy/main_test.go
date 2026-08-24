@@ -46,6 +46,7 @@ func TestNewClawyCommand(t *testing.T) {
 		"migrate",
 		"model",
 		"onboard",
+		"pairing",
 		"skills",
 		"status",
 		"update",

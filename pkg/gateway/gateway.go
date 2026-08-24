@@ -55,6 +55,7 @@ import (
 	"github.com/Kantemba/clawy/pkg/pid"
 	"github.com/Kantemba/clawy/pkg/providers"
 	"github.com/Kantemba/clawy/pkg/state"
+	"github.com/Kantemba/clawy/pkg/telemetry"
 	"github.com/Kantemba/clawy/pkg/tools"
 )
 
@@ -171,6 +172,23 @@ func Run(debug bool, homePath, configPath string, allowEmptyStartup bool) (runEr
 		effectiveLogLevel := config.EffectiveGatewayLogLevel(cfg)
 		logger.SetLevelFromString(effectiveLogLevel)
 		logger.Infof("Log level set to %q", effectiveLogLevel)
+	}
+
+	// OpenTelemetry: traces, metrics, and logs exported over OTLP.
+	// A broken telemetry config must never take the gateway down.
+	if err := initTelemetry(cfg); err != nil {
+		logger.Warnf("OpenTelemetry disabled: %v", err)
+	} else if telemetry.Enabled() {
+		defer func() {
+			releaseTelemetry()
+			shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			defer cancel()
+			if err := telemetry.Shutdown(shutdownCtx); err != nil {
+				logger.WarnCF("telemetry", "OpenTelemetry shutdown error", map[string]any{
+					"error": err.Error(),
+				})
+			}
+		}()
 	}
 
 	bindPlan, listenResult, err := openGatewayListeners(cfg.Gateway.Host, cfg.Gateway.Port)

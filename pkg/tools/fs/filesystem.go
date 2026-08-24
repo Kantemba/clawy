@@ -961,7 +961,10 @@ func (t *WriteFileTool) Execute(ctx context.Context, args map[string]any) *ToolR
 	overwrite, _ := args["overwrite"].(bool)
 
 	if !overwrite {
-		if _, err := t.fs.Open(path); err == nil {
+		// Existence probe: always close the handle so we do not leak a file
+		// descriptor or hold a lock that blocks deletion on Windows.
+		if f, err := t.fs.Open(path); err == nil {
+			_ = f.Close()
 			if phrase := t.altToolsPhrase(); phrase != "" {
 				return ErrorResult(
 					fmt.Sprintf(

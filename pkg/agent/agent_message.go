@@ -6,12 +6,14 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/Kantemba/clawy/pkg/bus"
 	"github.com/Kantemba/clawy/pkg/constants"
 	"github.com/Kantemba/clawy/pkg/logger"
 	"github.com/Kantemba/clawy/pkg/routing"
 	"github.com/Kantemba/clawy/pkg/session"
+	"github.com/Kantemba/clawy/pkg/telemetry"
 	"github.com/Kantemba/clawy/pkg/utils"
 )
 
@@ -120,7 +122,27 @@ func (al *AgentLoop) prepareInboundMessageForAgent(
 	return msg
 }
 
+// processMessage instruments one inbound turn with an OpenTelemetry span and
+// turn metrics, then delegates to the un-instrumented implementation.
 func (al *AgentLoop) processMessage(ctx context.Context, msg bus.InboundMessage) (string, error) {
+	startedAt := time.Now()
+	telemetry.RecordMessageReceived(msg.Channel)
+
+	ctx, span := telemetry.StartTurnSpan(ctx, msg.Channel, msg.ChatID, msg.SenderID, msg.SessionKey, len(msg.Media))
+
+	response, err := al.processMessageInner(ctx, msg)
+
+	telemetry.FinishSpan(span, err)
+	status := "ok"
+	if err != nil {
+		status = "error"
+	}
+	telemetry.RecordTurnDuration(startedAt, status)
+
+	return response, err
+}
+
+func (al *AgentLoop) processMessageInner(ctx context.Context, msg bus.InboundMessage) (string, error) {
 	msg = al.prepareInboundMessageForAgent(ctx, msg)
 
 	// Add message preview to log (show full content for error messages)

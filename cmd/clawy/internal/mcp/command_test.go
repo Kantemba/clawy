@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"slices"
 	"strings"
 	"testing"
@@ -183,6 +184,9 @@ func TestMCPAddRejectsEnvFileForHTTP(t *testing.T) {
 }
 
 func TestMCPAddRejectsNonExecutableLocalCommand(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Windows does not enforce Unix executable bits")
+	}
 	setupMCPConfigEnv(t)
 
 	tmpDir := t.TempDir()
@@ -443,6 +447,11 @@ func TestMCPEditUsesEditor(t *testing.T) {
 	editorCommand = func(name string, args ...string) *exec.Cmd {
 		gotName = name
 		gotArgs = append([]string(nil), args...)
+		// Use a shell that actually exists so the editor process exits
+		// successfully on every platform.
+		if runtime.GOOS == "windows" {
+			return exec.Command("cmd", "/c", "exit 0")
+		}
 		return exec.Command("sh", "-c", "exit 0")
 	}
 

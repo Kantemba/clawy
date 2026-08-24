@@ -4,9 +4,26 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
+
+// stubExitZero returns a command that terminates successfully on any platform.
+func stubExitZero() *exec.Cmd {
+	if runtime.GOOS == "windows" {
+		return exec.Command("cmd", "/c", "exit 0")
+	}
+	return exec.Command("sh", "-c", "exit 0")
+}
+
+// stubFailWithStderr returns a command that writes msg to stderr and exits 2.
+func stubFailWithStderr(msg string) *exec.Cmd {
+	if runtime.GOOS == "windows" {
+		return exec.Command("cmd", "/c", "(echo "+msg+") 1>&2 & exit 2")
+	}
+	return exec.Command("sh", "-c", "echo "+msg+" >&2; exit 2")
+}
 
 func TestEnsureOnboardedSkipsWhenConfigExists(t *testing.T) {
 	configPath := filepath.Join(t.TempDir(), "config.json")
@@ -43,13 +60,12 @@ func TestEnsureOnboardedRunsOnboardWhenConfigMissing(t *testing.T) {
 	execCommand = func(name string, args ...string) *exec.Cmd {
 		gotName = name
 		gotArgs = append([]string(nil), args...)
-		return exec.Command(
-			"sh",
-			"-c",
-			`test "$CLAWY_CONFIG" = "$EXPECTED_CONFIG_PATH" &&
-mkdir -p "$(dirname "$CLAWY_CONFIG")" &&
-printf '{}' > "$CLAWY_CONFIG"`,
-		)
+		// Simulate onboard creating the config file so the stub stays
+		// shell-agnostic (POSIX sh may not exist on Windows hosts).
+		if err := os.WriteFile(configPath, []byte("{}"), 0o644); err != nil {
+			t.Errorf("stub onboard failed to create config: %v", err)
+		}
+		return stubExitZero()
 	}
 
 	if err := EnsureOnboarded(configPath); err != nil {
@@ -73,7 +89,7 @@ func TestEnsureOnboardedFailsWhenOnboardDoesNotCreateConfig(t *testing.T) {
 	defer func() { execCommand = origExecCommand }()
 
 	execCommand = func(name string, args ...string) *exec.Cmd {
-		return exec.Command("sh", "-c", "exit 0")
+		return stubExitZero()
 	}
 
 	if err := EnsureOnboarded(configPath); err == nil {
@@ -88,7 +104,7 @@ func TestEnsureOnboardedIncludesOnboardOutputOnFailure(t *testing.T) {
 	defer func() { execCommand = origExecCommand }()
 
 	execCommand = func(name string, args ...string) *exec.Cmd {
-		return exec.Command("sh", "-c", "echo onboarding failed >&2; exit 2")
+		return stubFailWithStderr("onboarding failed")
 	}
 
 	err := EnsureOnboarded(configPath)

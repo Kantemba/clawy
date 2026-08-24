@@ -245,8 +245,13 @@ func TestSetDefaultModel_ModelWithoutAPIKey(t *testing.T) {
 }
 
 func TestSetDefaultModel_SaveConfigError(t *testing.T) {
-	// Use an invalid path to trigger save error
-	invalidPath := "/nonexistent/directory/config.json"
+	// Use a path whose parent is an existing FILE to trigger a save error
+	// reliably on every platform (creating a directory inside a file fails
+	// on both POSIX and Windows, unlike "/nonexistent/..." which Windows may
+	// resolve against the current drive and create).
+	blocker := filepath.Join(t.TempDir(), "blocker")
+	require.NoError(t, os.WriteFile(blocker, []byte("not a directory"), 0o644))
+	invalidPath := filepath.Join(blocker, "config.json")
 
 	cfg := &config.Config{
 		Agents: config.AgentsConfig{

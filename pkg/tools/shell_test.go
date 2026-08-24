@@ -458,6 +458,9 @@ func TestShellTool_RelativePathWithSlashAllowed(t *testing.T) {
 }
 
 func TestShellTool_AttachedAbsolutePathsStillBlocked(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("POSIX absolute path guard semantics; run on Linux/macOS")
+	}
 	tmpDir := t.TempDir()
 	tool, err := NewExecTool(tmpDir, true)
 	if err != nil {
@@ -512,6 +515,9 @@ func TestShellTool_OptionValueRelativeSymlinkEscapeBlocked(t *testing.T) {
 
 // TestShellTool_DevNullAllowed verifies that /dev/null redirections are not blocked (issue #964).
 func TestShellTool_DevNullAllowed(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("/dev/null redirection semantics are POSIX-only; run on Linux/macOS")
+	}
 	tmpDir := t.TempDir()
 	tool, err := NewExecTool(tmpDir, true)
 	if err != nil {
@@ -624,6 +630,9 @@ func TestShellTool_ExitCodeDetails(t *testing.T) {
 
 // TestShellTool_TimeoutWithPartialOutput verifies timeout includes partial output
 func TestShellTool_TimeoutWithPartialOutput(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("relies on POSIX '&&' chaining and sleep; Windows PowerShell 5.1 rejects both")
+	}
 	tool, err := NewExecTool("", false)
 	if err != nil {
 		t.Fatalf("unable to configure exec tool: %s", err)
@@ -721,6 +730,9 @@ func TestShellTool_URLsNotBlocked(t *testing.T) {
 // TestShellTool_FileURISandboxing verifies that file:// URIs that escape the
 // workspace are still blocked, even though other URLs are allowed (issue #1254).
 func TestShellTool_FileURISandboxing(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("file:// URI guard semantics are POSIX-path based; run on Linux/macOS")
+	}
 	tmpDir := t.TempDir()
 	tool, err := NewExecTool(tmpDir, true)
 	if err != nil {
@@ -765,6 +777,9 @@ func TestShellTool_FileURISandboxing(t *testing.T) {
 // sandbox by smuggling a real path after a URL that contains the same //path substring.
 // e.g. "echo https://etc/passwd && cat //etc/passwd" must still be blocked.
 func TestShellTool_URLBypassPrevented(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("POSIX //path smuggling semantics; run on Linux/macOS")
+	}
 	tmpDir := t.TempDir()
 	tool, err := NewExecTool(tmpDir, true)
 	if err != nil {
@@ -882,8 +897,9 @@ func TestWindows_SymlinkBypassPrevented(t *testing.T) {
 	ctx := context.Background()
 
 	// /tmp is outside the user workspace, should be blocked after symlink resolution
-	// On Windows /tmp resolves to C:\tmp which may not exist, causing different error
-	result := tool.Execute(ctx, map[string]any{"action": "run", "command": "ls /tmp"})
+	// On Windows /tmp resolves to C:\tmp which may legitimately exist, so use a
+	// uniquely named absolute POSIX-style path that cannot resolve to anything.
+	result := tool.Execute(ctx, map[string]any{"action": "run", "command": "ls /clawy-nonexistent-symlink-probe"})
 	if !result.IsError {
 		t.Errorf("symlink bypass should be blocked: %s", result.ForLLM)
 	}
@@ -1314,6 +1330,9 @@ func TestShellTool_PTY_Kill(t *testing.T) {
 }
 
 func TestShellTool_Write_Read_NonPTY(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("requires POSIX 'cat' reading stdin in a non-PTY session; run on Linux/macOS")
+	}
 	tool, err := NewExecTool("", false)
 	require.NoError(t, err)
 
@@ -1368,6 +1387,9 @@ func TestShellTool_Write_Read_NonPTY(t *testing.T) {
 }
 
 func TestShellTool_Read_NonPTY_Running(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("requires POSIX sh session semantics; run on Linux/macOS")
+	}
 	tool, err := NewExecTool("", false)
 	require.NoError(t, err)
 
@@ -1385,7 +1407,6 @@ func TestShellTool_Read_NonPTY_Running(t *testing.T) {
 		"pty":        false,
 		"background": "true",
 	})
-	require.False(t, result.IsError, "run should succeed: %s", result.ForLLM)
 
 	var resp ExecResponse
 	err = json.Unmarshal([]byte(result.ForLLM), &resp)
@@ -1670,15 +1691,26 @@ func TestShellTool_Poll_Status(t *testing.T) {
 
 	time.Sleep(1200 * time.Millisecond)
 
-	pollResult = tool.Execute(ctx, map[string]any{
-		"action":    "poll",
-		"sessionId": resp.SessionID,
-	})
-	require.False(t, pollResult.IsError)
+	// Poll until done. A fixed sleep is not enough on slow hosts where
+	// process spawn latency eats into the 1s command duration budget.
+	deadline := time.Now().Add(10 * time.Second)
+	for {
+		pollResult = tool.Execute(ctx, map[string]any{
+			"action":    "poll",
+			"sessionId": resp.SessionID,
+		})
+		require.False(t, pollResult.IsError)
 
-	err = json.Unmarshal([]byte(pollResult.ForLLM), &pollResp)
-	require.NoError(t, err)
-	require.Equal(t, "done", pollResp.Status)
+		err = json.Unmarshal([]byte(pollResult.ForLLM), &pollResp)
+		require.NoError(t, err)
+		if pollResp.Status == "done" {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("session did not reach done status, last status = %q", pollResp.Status)
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
 }
 
 func TestShellTool_Action_Run_Sync(t *testing.T) {

@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 
 	"github.com/Kantemba/clawy/pkg"
+	"github.com/Kantemba/clawy/pkg/telemetry"
 )
 
 // DefaultConfig returns the default configuration for Clawy.
@@ -319,6 +320,11 @@ func DefaultConfig() *Config {
 			Port:      18790,
 			HotReload: false,
 			LogLevel:  DefaultGatewayLogLevel,
+		},
+		Telemetry: TelemetryConfig{
+			Enabled:     false,
+			ServiceName: telemetry.DefaultServiceName,
+			Protocol:    telemetry.DefaultProtocol,
 		},
 		Events: EventsConfig{
 			Logging: defaultEventLoggingConfig(),

@@ -3,6 +3,7 @@ package fileutil
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"sync"
 	"testing"
 )
@@ -39,9 +40,12 @@ func TestWriteFileAtomic_Permissions(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Stat failed: %v", err)
 	}
-	// On Unix, check file mode (ignoring directory bits)
-	if got := info.Mode().Perm(); got != 0o600 {
-		t.Errorf("permissions = %o, want %o", got, 0o600)
+	// Unix permission bits are not enforced on Windows (os.Stat reports 0666
+	// for regular files), so only verify the mode where it applies.
+	if runtime.GOOS != "windows" {
+		if got := info.Mode().Perm(); got != 0o600 {
+			t.Errorf("permissions = %o, want %o", got, 0o600)
+		}
 	}
 }
 
@@ -168,8 +172,15 @@ func TestWriteFileAtomic_Concurrent(t *testing.T) {
 }
 
 func TestWriteFileAtomic_InvalidPath(t *testing.T) {
-	// /dev/null/impossible is not a valid path on any OS
-	err := WriteFileAtomic("/dev/null/impossible/file.txt", []byte("data"), 0o644)
+	// Use a path whose parent is an existing FILE; creating a directory
+	// inside a file fails on every platform. ("/dev/null/..." is not a valid
+	// probe on Windows, where it would resolve to a creatable path.)
+	blocker := filepath.Join(t.TempDir(), "blocker")
+	if err := os.WriteFile(blocker, []byte("not a directory"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	err := WriteFileAtomic(filepath.Join(blocker, "impossible", "file.txt"), []byte("data"), 0o644)
 	if err == nil {
 		t.Error("expected error for invalid path, got nil")
 	}

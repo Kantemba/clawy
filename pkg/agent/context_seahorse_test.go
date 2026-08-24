@@ -300,6 +300,9 @@ func TestSeahorseAssemblePreservesActiveToolTurnAcrossSanitization(t *testing.T)
 	if err != nil {
 		t.Fatalf("NewEngine: %v", err)
 	}
+	// Release the SQLite handle before TempDir cleanup removes the database
+	// file (Windows cannot delete files that are still open).
+	t.Cleanup(func() { _ = engine.Close() })
 
 	ctx := context.Background()
 	sessionKey := "test:active-tool-turn"
@@ -616,6 +619,9 @@ func TestSeahorseRealLoopNoDuplicateMessages(t *testing.T) {
 	msgBus := bus.NewMessageBus()
 	mockProvider := &simpleMockProvider{response: "I received your message."}
 	al := NewAgentLoop(cfg, msgBus, mockProvider)
+	// Release the seahorse SQLite handle before TempDir cleanup (Windows
+	// cannot delete files that are still open).
+	t.Cleanup(func() { al.Close() })
 	defaultAgent := al.registry.GetDefaultAgent()
 	if defaultAgent == nil {
 		t.Fatal("expected default agent")
@@ -967,6 +973,9 @@ func TestSeahorseSteeringMessageIngested(t *testing.T) {
 	msgBus := bus.NewMessageBus()
 	mockProvider := &simpleMockProvider{response: "I received your message."}
 	al := NewAgentLoop(cfg, msgBus, mockProvider)
+	// Release the seahorse SQLite handle before TempDir cleanup (Windows
+	// cannot delete files that are still open).
+	t.Cleanup(func() { al.Close() })
 	defaultAgent := al.registry.GetDefaultAgent()
 	if defaultAgent == nil {
 		t.Fatal("expected default agent")
@@ -1074,6 +1083,9 @@ func TestSeahorseSummarizeSkipsCondensedWhenBelowThreshold(t *testing.T) {
 	msgBus := bus.NewMessageBus()
 	provider := &seahorseTestProvider{}
 	al := NewAgentLoop(cfg, msgBus, provider)
+	// Release the seahorse SQLite handle before TempDir cleanup (Windows
+	// cannot delete files that are still open).
+	t.Cleanup(func() { al.Close() })
 	defaultAgent := al.registry.GetDefaultAgent()
 	if defaultAgent == nil {
 		t.Fatal("expected default agent")

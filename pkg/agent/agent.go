@@ -9,6 +9,7 @@ package agent
 import (
 	"context"
 	"fmt"
+	"io"
 	"regexp"
 	"strings"
 	"sync"
@@ -338,6 +339,17 @@ func (al *AgentLoop) Close() {
 	if evolution != nil {
 		if err := evolution.Close(); err != nil {
 			logger.ErrorCF("agent", "Failed to close evolution bridge",
+				map[string]any{
+					"error": err.Error(),
+				})
+		}
+	}
+
+	// Context managers that hold resources (e.g. seahorse SQLite) are closed
+	// opportunistically via io.Closer so handles are released on shutdown.
+	if closer, ok := al.contextManager.(io.Closer); ok {
+		if err := closer.Close(); err != nil {
+			logger.ErrorCF("agent", "Failed to close context manager",
 				map[string]any{
 					"error": err.Error(),
 				})

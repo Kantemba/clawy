@@ -14,6 +14,8 @@ import (
 
 func TestGetConfigPath(t *testing.T) {
 	t.Setenv("HOME", "/tmp/home")
+	// os.UserHomeDir reads USERPROFILE on Windows.
+	t.Setenv("USERPROFILE", "/tmp/home")
 
 	got := GetConfigPath()
 	want := filepath.Join("/tmp/home", ".clawy", "config.json")
