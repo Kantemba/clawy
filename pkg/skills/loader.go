@@ -27,15 +27,17 @@ const (
 )
 
 type SkillMetadata struct {
-	Name        string `json:"name"`
-	Description string `json:"description"`
+	Name        string            `json:"name"`
+	Description string            `json:"description"`
+	Permissions *SkillPermissions `json:"permissions,omitempty"`
 }
 
 type SkillInfo struct {
-	Name        string `json:"name"`
-	Path        string `json:"path"`
-	Source      string `json:"source"`
-	Description string `json:"description"`
+	Name        string            `json:"name"`
+	Path        string            `json:"path"`
+	Source      string            `json:"source"`
+	Description string            `json:"description"`
+	Permissions *SkillPermissions `json:"permissions,omitempty"`
 }
 
 func (info SkillInfo) validate() error {
@@ -136,6 +138,7 @@ func (sl *SkillsLoader) ListSkills() []SkillInfo {
 			if metadata != nil {
 				info.Description = metadata.Description
 				info.Name = metadata.Name
+				info.Permissions = metadata.Permissions
 			}
 			if err := info.validate(); err != nil {
 				slog.Warn("invalid skill from "+source, "name", info.Name, "error", err)
@@ -234,6 +237,9 @@ func (sl *SkillsLoader) BuildSkillsSummary() string {
 		lines = append(lines, fmt.Sprintf("    <description>%s</description>", escapedDesc))
 		lines = append(lines, fmt.Sprintf("    <location>%s</location>", escapedPath))
 		lines = append(lines, fmt.Sprintf("    <source>%s</source>", s.Source))
+		if s.Permissions != nil && !s.Permissions.Empty() {
+			lines = append(lines, fmt.Sprintf("    <permissions>%s</permissions>", escapeXML(s.Permissions.Summary())))
+		}
 		lines = append(lines, "  </skill>")
 	}
 	lines = append(lines, "</skills>")
@@ -266,6 +272,18 @@ func (sl *SkillsLoader) getSkillMetadata(skillPath string) *SkillMetadata {
 
 	if frontmatter == "" {
 		return metadata
+	}
+
+	// Parse the optional permission disclosure manifest. Invalid manifests are
+	// logged and ignored — a broken manifest must not make a skill unloadable.
+	if perms, perr := parsePermissionsFrontmatter(frontmatter); perr != nil {
+		logger.WarnCF("skills", "Ignoring invalid permissions frontmatter",
+			map[string]any{
+				"skill_path": skillPath,
+				"error":      perr.Error(),
+			})
+	} else if perms != nil {
+		metadata.Permissions = perms
 	}
 
 	// Try JSON first (for backward compatibility)

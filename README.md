@@ -494,6 +494,7 @@ Talk to your Clawy through 20+ messaging platforms:
 | **Pico** | Easy (enable) | Native protocol | Built-in |
 | **Pico Client** | Easy (WebSocket URL) | WebSocket | Built-in |
 | **WebChat** | Easy (enable) | Browser (HTTP + SSE) | Built-in |
+| **Custom Webhook** | Easy (optional token) | HTTP POST | [Guide](docs/channels/webhook/README.md) |
 
 > All webhook-based channels share a single Gateway HTTP server (`gateway.host`:`gateway.port`, default `127.0.0.1:18790`). Feishu uses WebSocket/SDK mode and does not use the shared HTTP server.
 
@@ -589,6 +590,21 @@ Add to your `config.json`:
 ```
 
 `tools.skills.github.*` is deprecated. Use `tools.skills.registries.github.*` instead.
+
+**Permission manifests**: skills may declare what they expect to access in
+their SKILL.md frontmatter. `clawy skills install` surfaces the manifest for
+review before you trust a skill, and the agent's skill catalog discloses it:
+
+```yaml
+---
+name: deploy-helper
+description: "Deploys the staging site"
+permissions:
+  tools: [exec, web_search]
+  network: ["*.internal.example.com"]
+  exec: ["git *", "npm test"]
+---
+```
 
 For more details, see [Tools Configuration - Skills](docs/reference/tools_configuration.md#skills-tool).
 

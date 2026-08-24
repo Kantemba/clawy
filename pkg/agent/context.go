@@ -451,6 +451,10 @@ func (cb *ContextBuilder) buildSkillsSummary(allowed []string) string {
 			fmt.Sprintf("    <location>%s</location>", xmlEscapeForPrompt(s.Path)),
 		)
 		lines = append(lines, fmt.Sprintf("    <source>%s</source>", xmlEscapeForPrompt(s.Source)))
+		if s.Permissions != nil && !s.Permissions.Empty() {
+			lines = append(lines,
+				fmt.Sprintf("    <permissions>%s</permissions>", xmlEscapeForPrompt(s.Permissions.Summary())))
+		}
 		lines = append(lines, "  </skill>")
 	}
 	if len(lines) == 1 {

@@ -128,8 +128,25 @@ func skillsInstallFromRegistry(cfg *config.Config, registryName, target string) 
 	if result.Summary != "" {
 		fmt.Printf("  %s\n", result.Summary)
 	}
+	warnSkillPermissions(targetDir)
 
 	return nil
+}
+
+// warnSkillPermissions prints the permission manifest declared by an installed
+// skill so users can review what it expects to access before trusting it.
+func warnSkillPermissions(targetDir string) {
+	data, err := os.ReadFile(filepath.Join(targetDir, "SKILL.md"))
+	if err != nil {
+		return
+	}
+	perms, err := skills.ParseSkillPermissions(string(data))
+	if err != nil || perms.Empty() {
+		return
+	}
+	fmt.Println("\u26a0\ufe0f  Permission manifest declared by this skill:")
+	fmt.Printf("    %s\n", perms.Summary())
+	fmt.Println("    Review SKILL.md before granting sensitive access.")
 }
 
 func writeInstalledSkillOriginMeta(targetDir string, meta installedSkillOriginMeta) error {

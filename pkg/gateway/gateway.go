@@ -36,6 +36,7 @@ import (
 	_ "github.com/Kantemba/clawy/pkg/channels/telegram"
 	_ "github.com/Kantemba/clawy/pkg/channels/vk"
 	_ "github.com/Kantemba/clawy/pkg/channels/webchat"
+	_ "github.com/Kantemba/clawy/pkg/channels/webhook"
 	_ "github.com/Kantemba/clawy/pkg/channels/wecom"
 	_ "github.com/Kantemba/clawy/pkg/channels/weixin"
 	_ "github.com/Kantemba/clawy/pkg/channels/whatsapp"

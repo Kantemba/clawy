@@ -795,6 +795,50 @@ type TeamsWebhookTarget struct {
 	Title      string       `json:"title,omitempty"      yaml:"-"`
 }
 
+// WebhookSettings configures a generic inbound webhook channel served from
+// Clawy's shared gateway HTTP server. External systems (home automation,
+// CI pipelines, IoT devices, scripts) POST JSON or plain-text payloads and
+// Clawy processes them like any other inbound chat message.
+type WebhookSettings struct {
+	// Token is an optional shared secret. When set, callers must present it
+	// via ?token=, the X-Clawy-Token header, or an Authorization: Bearer value.
+	Token SecureString `json:"token,omitzero" yaml:"token,omitempty" env:"CLAWY_CHANNELS_WEBHOOK_TOKEN"`
+	// Path overrides the HTTP mount path. Defaults to "/webhook/<channel name>".
+	Path string `json:"path,omitempty" yaml:"-" env:"CLAWY_CHANNELS_WEBHOOK_PATH"`
+	// ReplyURL is an optional endpoint that receives agent replies as JSON
+	// POSTs: {"chat_id", "content", "session_key"}. When empty, replies are
+	// dropped — useful for fire-and-forget trigger integrations. HTTPS is
+	// required except for loopback hosts (localhost/127.0.0.1).
+	ReplyURL SecureString `json:"reply_url,omitzero" yaml:"reply_url,omitempty" env:"CLAWY_CHANNELS_WEBHOOK_REPLY_URL"`
+}
+
+// EffectivePath returns the normalized HTTP mount path for this webhook
+// instance, deriving one from channelName when Path is not configured so
+// multiple webhook instances never collide on the shared gateway server.
+func (s *WebhookSettings) EffectivePath(channelName string) string {
+	p := strings.TrimSpace(s.Path)
+	if p == "" {
+		clean := strings.Map(func(r rune) rune {
+			switch {
+			case r >= 'a' && r <= 'z', r >= '0' && r <= '9', r == '-', r == '_':
+				return r
+			case r >= 'A' && r <= 'Z':
+				return r + ('a' - 'A')
+			default:
+				return '-'
+			}
+		}, strings.TrimSpace(channelName))
+		if clean == "" {
+			clean = "custom"
+		}
+		return "/webhook/" + clean
+	}
+	if !strings.HasPrefix(p, "/") {
+		p = "/" + p
+	}
+	return strings.TrimSuffix(p, "/")
+}
+
 type MQTTSettings struct {
 	Broker      string       `json:"broker"                 yaml:"-"                  env:"CLAWY_CHANNELS_MQTT_BROKER"`
 	AgentID     string       `json:"agent_id"               yaml:"-"                  env:"CLAWY_CHANNELS_MQTT_AGENT_ID"`

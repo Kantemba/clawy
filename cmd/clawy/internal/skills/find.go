@@ -145,6 +145,7 @@ Examples:
 			}
 
 			fmt.Printf("✓ Skill '%s' v%s installed to %s\n", dirName, installResult.Version, targetDir)
+			warnSkillPermissions(targetDir)
 			return nil
 		},
 	}
