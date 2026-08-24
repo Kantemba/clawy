@@ -176,9 +176,19 @@ Clawy can be deployed on virtually any Linux device!
 
 Visit **[clawy.io](https://clawy.io)** — the official website auto-detects your platform and provides one-click download. No need to manually pick an architecture.
 
-### Download precompiled binary
+### Download an installer or package
 
-Alternatively, download the binary for your platform from the [GitHub Releases](https://github.com/Kantemba/clawy/releases) page.
+Grab the right artifact for your platform from the [GitHub Releases](https://github.com/Kantemba/clawy/releases) page:
+
+| Platform | Artifact | Notes |
+|----------|----------|-------|
+| Windows | `ClawySetup-<version>.exe` | Full installer with Start Menu / desktop shortcuts and uninstaller |
+| macOS | `clawy_<version>_macOS_<arch>.dmg` | Drag-and-drop `.app` bundle (Apple Silicon: `arm64`, Intel: `amd64`) |
+| Debian / Ubuntu | `clawy_<version>_x86_64.deb` | Installs `clawy` and `clawy-launcher` to `/usr/bin` |
+| RHEL / Fedora | `clawy_<version>_x86_64.rpm` | Same layout as the deb |
+| Any other OS/arch | `clawy_<Os>_<Arch>.tar.gz` (`.zip` on Windows) | Portable binaries |
+
+### Download portable binary
 
 ### Build from source (for development)
 

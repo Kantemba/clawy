@@ -133,13 +133,19 @@ ifeq ($(UNAME_S),Linux)
 	endif
 else ifeq ($(UNAME_S),Darwin)
 	PLATFORM=darwin
-	WEB_GO=CGO_LDFLAGS="-mmacosx-version-min=10.11" CGO_CFLAGS="-mmacosx-version-min=10.11" CGO_ENABLED=1 go
 	ifeq ($(UNAME_M),x86_64)
 		ARCH?=amd64
 	else ifeq ($(UNAME_M),arm64)
 		ARCH?=arm64
 	else
 		ARCH?=$(UNAME_M)
+	endif
+	# When targeting amd64 from an Apple Silicon host (or vice versa), cgo
+	# needs an explicit -arch flag; clang otherwise compiles for the host.
+	ifeq ($(ARCH),amd64)
+		WEB_GO=CGO_LDFLAGS="-mmacosx-version-min=10.11 -arch x86_64" CGO_CFLAGS="-mmacosx-version-min=10.11 -arch x86_64" CGO_ENABLED=1 go
+	else
+		WEB_GO=CGO_LDFLAGS="-mmacosx-version-min=10.11" CGO_CFLAGS="-mmacosx-version-min=10.11" CGO_ENABLED=1 go
 	endif
 else
 	PLATFORM=$(UNAME_S)
@@ -463,7 +469,7 @@ build-macos-app:build-launcher
 		echo "Error: This target is only available on macOS"; \
 		exit 1; \
 	fi
-	@./scripts/build-macos-app.sh $(PLATFORM)-$(ARCH)
+	@./scripts/build-macos-app.sh $(PLATFORM)-$(ARCH) "$(VERSION)"
 	@echo "macOS .app bundle created: $(BUILD_DIR)/Clawy.app"
 
 ## mem: Build membench, download LOCOMO data (if needed), run benchmark, and show results

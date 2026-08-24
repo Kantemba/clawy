@@ -30,7 +30,9 @@ jobs:
             --pattern "*.tar.gz" \
             --pattern "*.zip" \
             --pattern "*.rpm" \
-            --pattern "*.deb"
+            --pattern "*.deb" \
+            --pattern "*.exe" \
+            --pattern "*.dmg"
 
       - name: Upload to Volcengine TOS
         env:

@@ -116,9 +116,63 @@ jobs:
             --draft=${{ inputs.draft }} \
             --prerelease=${{ inputs.prerelease }}
 
+  windows-installer:
+    name: Windows Installer
+    needs: release
+    runs-on: windows-latest
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - name: Checkout tag
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.tag }}
+
+      - name: Install Inno Setup
+        shell: pwsh
+        run: choco install innosetup --yes --no-progress
+
+      - name: Download Windows binaries from release
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path build | Out-Null
+          gh release download "${{ inputs.tag }}" `
+            --repo "${{ github.repository }}" `
+            --pattern "clawy_Windows_x86_64.zip" `
+            --output "build/clawy_Windows_x86_64.zip"
+          Expand-Archive -LiteralPath "build/clawy_Windows_x86_64.zip" -DestinationPath build -Force
+          Get-ChildItem build
+
+      - name: Build installer
+        shell: pwsh
+        run: |
+          $iscc = @(
+            "${env:ProgramFiles}\Inno Setup 6\ISCC.exe",
+            "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          ) | Where-Object { Test-Path -LiteralPath $_ } | Select-Object -First 1
+          if (-not $iscc) { throw "ISCC.exe not found; Inno Setup installation failed." }
+          & $iscc "/DMyAppVersion=${{ inputs.tag }}" "scripts\setup.iss"
+          if ($LASTEXITCODE -ne 0) { throw "ISCC.exe failed with exit code $LASTEXITCODE" }
+
+      - name: Attach installer to release
+        shell: pwsh
+        run: gh release upload "${{ inputs.tag }}" "build/ClawySetup-${{ inputs.tag }}.exe" --repo "${{ github.repository }}" --clobber
+
+  macos-dmg:
+    name: macOS DMG
+    needs: release
+    permissions:
+      contents: write
+    uses: ./.github/workflows/create_dmg.yml
+    with:
+      tag: ${{ inputs.tag }}
+      upload_to_release: true
+
   upload-tos:
     name: Upload to TOS
-    needs: release
+    needs: [release, windows-installer, macos-dmg]
     if: ${{ inputs.upload_tos }}
     uses: ./.github/workflows/upload-tos.yml
     with:

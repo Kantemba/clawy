@@ -1,21 +1,47 @@
 name: Create macOS DMG
+
 on:
   workflow_dispatch:
+    inputs:
+      tag:
+        description: "Existing tag to package (e.g. v0.2.0)"
+        required: true
+        type: string
+      upload_to_release:
+        description: "Attach DMGs to the GitHub Release"
+        required: false
+        type: boolean
+        default: true
+
+  workflow_call:
+    inputs:
+      tag:
+        description: "Existing tag to package (e.g. v0.2.0)"
+        required: true
+        type: string
+      upload_to_release:
+        description: "Attach DMGs to the GitHub Release"
+        required: false
+        type: boolean
+        default: true
 
 jobs:
-  build:
-    name: Build ${{ matrix.arch }}
+  dmg:
+    name: DMG ${{ matrix.arch }}
     runs-on: macos-latest
+    permissions:
+      contents: write
     strategy:
       matrix:
         # This creates two parallel jobs
         arch: [arm64, amd64]
 
     steps:
-      - name: Checkout code
+      - name: Checkout tag
         uses: actions/checkout@v7
         with:
-          ref: main
+          fetch-depth: 0
+          ref: ${{ inputs.tag }}
 
       # 1. Install Go from go.mod
       - name: Setup Go
@@ -36,9 +62,10 @@ jobs:
           cache: pnpm
           cache-dependency-path: web/frontend/pnpm-lock.yaml
 
-      # 3. Build the application bundle
-      - name: Build with Make
-        run: make build ARCH=${{ matrix.arch }} && make build-macos-app ARCH=${{ matrix.arch }}
+      # 3. Build the application bundle (VERSION feeds both the binaries'
+      #    ldflags and the Info.plist bundle version)
+      - name: Build app bundle
+        run: make build ARCH=${{ matrix.arch }} && make build-macos-app ARCH=${{ matrix.arch }} VERSION="${{ inputs.tag }}"
 
       # 4. Apply ad-hoc signing
       - name: Ad-hoc Sign
@@ -48,9 +75,12 @@ jobs:
       - name: Install create-dmg
         run: brew install create-dmg
 
-      # 6. Create the DMG
+      # 6. Create a versioned DMG
       - name: Create DMG
+        env:
+          TAG: ${{ inputs.tag }}
         run: |
+          VERSION="${TAG#v}"
           mkdir -p dist
           create-dmg \
             --volname "Clawy Installer" \
@@ -60,12 +90,19 @@ jobs:
             --icon "Clawy Launcher.app" 200 190 \
             --hide-extension "Clawy Launcher.app" \
             --app-drop-link 600 185 \
-            "dist/clawy-${{ matrix.arch }}.dmg" \
+            "dist/clawy_${VERSION}_macOS_${{ matrix.arch }}.dmg" \
             "build/Clawy Launcher.app"
 
-      # 7. Upload the DMG as a GitHub artifact
-      - name: Upload DMG
+      # 7. Upload the DMG as a workflow artifact
+      - name: Upload artifact
         uses: actions/upload-artifact@v7
         with:
           name: macos-dmg-${{ matrix.arch }}
           path: dist/*.dmg
+
+      # 8. Attach the DMG to the GitHub Release
+      - name: Attach DMG to release
+        if: ${{ inputs.upload_to_release }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release upload "${{ inputs.tag }}" dist/*.dmg --repo "${{ github.repository }}" --clobber

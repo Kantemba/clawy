@@ -4,9 +4,10 @@
 set -e
 
 EXECUTABLE=$1
+APP_VERSION_ARG=$2
 
 if [ -z "$EXECUTABLE" ]; then
-    echo "Usage: $0 <executable>"
+    echo "Usage: $0 <platform-arch> [version]"
     exit 1
 fi
 
@@ -94,6 +95,28 @@ EOF
 #}
 
 cp $ICON_SOURCE "${APP_RESOURCES}/icon.icns"
+
+# Inject the real version into Info.plist. Prefers the value passed by the
+# caller (e.g. "v1.2.3" from CI); falls back to git describe for local builds.
+if [ -n "$APP_VERSION_ARG" ]; then
+    APP_VERSION="${APP_VERSION_ARG#v}"
+else
+    APP_VERSION="$(git describe --tags --always --dirty 2>/dev/null | sed -e 's/^v//')"
+fi
+if [ -z "$APP_VERSION" ]; then
+    APP_VERSION="0.0.0-dev"
+fi
+
+echo "Setting bundle version to ${APP_VERSION}..."
+if [ -x "/usr/libexec/PlistBuddy" ]; then
+    /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString ${APP_VERSION}" "${APP_CONTENTS}/Info.plist"
+    /usr/libexec/PlistBuddy -c "Set :CFBundleVersion ${APP_VERSION}" "${APP_CONTENTS}/Info.plist"
+else
+    sed -i '' \
+        -e "s|<string>1\.0</string>|<string>${APP_VERSION}</string>|" \
+        -e "s|<string>1</string>|<string>${APP_VERSION}</string>|" \
+        "${APP_CONTENTS}/Info.plist"
+fi
 
 echo ""
 echo "=========================================="
