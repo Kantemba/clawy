@@ -1,6 +1,9 @@
 name: Release
 
 on:
+  push:
+    tags:
+      - "v*"
   workflow_dispatch:
     inputs:
       tag:
@@ -30,14 +33,34 @@ jobs:
     permissions:
       contents: write
       packages: write
+    outputs:
+      tag: ${{ steps.rel_tag.outputs.tag }}
     steps:
+      - name: Resolve release tag
+        id: rel_tag
+        shell: bash
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "tag=${{ inputs.tag }}" >> "$GITHUB_OUTPUT"
+            echo "prerelease=${{ inputs.prerelease }}" >> "$GITHUB_OUTPUT"
+            echo "draft=${{ inputs.draft }}" >> "$GITHUB_OUTPUT"
+            echo "upload_tos=${{ inputs.upload_tos }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "tag=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
+            echo "prerelease=false" >> "$GITHUB_OUTPUT"
+            echo "draft=false" >> "$GITHUB_OUTPUT"
+            echo "upload_tos=false" >> "$GITHUB_OUTPUT"
+          fi
+          echo "Resolved tag: $(grep '^tag=' "$GITHUB_OUTPUT" | cut -d= -f2-)"
+
       - name: Verify tag exists
         shell: bash
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          if ! gh api "repos/${{ github.repository }}/git/ref/tags/${{ inputs.tag }}" --silent 2>/dev/null; then
-            echo "::error::Tag '${{ inputs.tag }}' does not exist. Create it first using the 'Create Tag' workflow."
+          TAG="${{ steps.rel_tag.outputs.tag }}"
+          if ! gh api "repos/${{ github.repository }}/git/ref/tags/${TAG}" --silent 2>/dev/null; then
+            echo "::error::Tag '${TAG}' does not exist. Create it first using the 'Create Tag' workflow (or push a v* tag)."
             exit 1
           fi
 
@@ -45,7 +68,7 @@ jobs:
         uses: actions/checkout@v7
         with:
           fetch-depth: 0
-          ref: ${{ inputs.tag }}
+          ref: ${{ steps.rel_tag.outputs.tag }}
 
       - name: Setup Go from go.mod
         id: setup-go
@@ -80,6 +103,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Login to Docker Hub
+        if: ${{ secrets.DOCKERHUB_USERNAME != '' && secrets.DOCKERHUB_TOKEN != '' }}
         uses: docker/login-action@v4
         with:
           registry: docker.io
@@ -98,7 +122,6 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_REPOSITORY_OWNER: ${{ github.repository_owner }}
-          DOCKERHUB_IMAGE_NAME: ${{ vars.DOCKERHUB_REPOSITORY }}
           GOVERSION: ${{ steps.setup-go.outputs.go-version }}
           INCLUDE_ANDROID_BUNDLE: "true"
           MACOS_SIGN_P12: ${{ secrets.MACOS_SIGN_P12 }}
@@ -112,9 +135,9 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release edit "${{ inputs.tag }}" \
-            --draft=${{ inputs.draft }} \
-            --prerelease=${{ inputs.prerelease }}
+          gh release edit "${{ steps.rel_tag.outputs.tag }}" \
+            --draft=${{ steps.rel_tag.outputs.draft }} \
+            --prerelease=${{ steps.rel_tag.outputs.prerelease }}
 
   windows-installer:
     name: Windows Installer
@@ -124,11 +147,12 @@ jobs:
       contents: write
     env:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      RELEASE_TAG: ${{ needs.release.outputs.tag }}
     steps:
       - name: Checkout tag
         uses: actions/checkout@v7
         with:
-          ref: ${{ inputs.tag }}
+          ref: ${{ env.RELEASE_TAG }}
 
       - name: Install Inno Setup
         shell: pwsh
@@ -138,7 +162,7 @@ jobs:
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force -Path build | Out-Null
-          gh release download "${{ inputs.tag }}" `
+          gh release download "$env:RELEASE_TAG" `
             --repo "${{ github.repository }}" `
             --pattern "clawy_Windows_x86_64.zip" `
             --output "build/clawy_Windows_x86_64.zip"
@@ -153,12 +177,12 @@ jobs:
             "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
           ) | Where-Object { Test-Path -LiteralPath $_ } | Select-Object -First 1
           if (-not $iscc) { throw "ISCC.exe not found; Inno Setup installation failed." }
-          & $iscc "/DMyAppVersion=${{ inputs.tag }}" "scripts\setup.iss"
+          & $iscc "/DMyAppVersion=$env:RELEASE_TAG" "scripts\setup.iss"
           if ($LASTEXITCODE -ne 0) { throw "ISCC.exe failed with exit code $LASTEXITCODE" }
 
       - name: Attach installer to release
         shell: pwsh
-        run: gh release upload "${{ inputs.tag }}" "build/ClawySetup-${{ inputs.tag }}.exe" --repo "${{ github.repository }}" --clobber
+        run: gh release upload "$env:RELEASE_TAG" "build/ClawySetup-$env:RELEASE_TAG.exe" --repo "${{ github.repository }}" --clobber
 
   macos-dmg:
     name: macOS DMG
@@ -167,14 +191,14 @@ jobs:
       contents: write
     uses: ./.github/workflows/create_dmg.yml
     with:
-      tag: ${{ inputs.tag }}
+      tag: ${{ needs.release.outputs.tag }}
       upload_to_release: true
 
   upload-tos:
     name: Upload to TOS
     needs: [release, windows-installer, macos-dmg]
-    if: ${{ inputs.upload_tos }}
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.upload_tos }}
     uses: ./.github/workflows/upload-tos.yml
     with:
-      tag: ${{ inputs.tag }}
+      tag: ${{ needs.release.outputs.tag }}
     secrets: inherit

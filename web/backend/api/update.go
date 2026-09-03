@@ -4,12 +4,14 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"github.com/Kantemba/clawy/pkg/config"
 	"github.com/Kantemba/clawy/pkg/updater"
 )
 
 // registerUpdateRoutes registers the self-update endpoint.
 func (h *Handler) registerUpdateRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/api/update", h.handleUpdate)
+	mux.HandleFunc("GET /api/update/check", h.handleUpdateCheck)
 }
 
 type updateRequest struct {
@@ -20,6 +22,31 @@ type updateRequest struct {
 type updateResponse struct {
 	Status  string `json:"status"`
 	Message string `json:"message,omitempty"`
+}
+
+type updateCheckResponse struct {
+	Current         string `json:"current"`
+	Latest          string `json:"latest"`
+	LatestURL       string `json:"latest_url,omitempty"`
+	UpdateAvailable bool   `json:"update_available"`
+}
+
+// handleUpdateCheck reports the latest GitHub release without downloading.
+// The launcher WebUI polls this to show an "update available" badge.
+func (h *Handler) handleUpdateCheck(w http.ResponseWriter, r *http.Request) {
+	st, err := updater.CheckForUpdate(config.GetVersion())
+	if err != nil {
+		w.WriteHeader(http.StatusBadGateway)
+		_ = json.NewEncoder(w).Encode(updateResponse{Status: "error", Message: err.Error()})
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(updateCheckResponse{
+		Current:         st.Current,
+		Latest:          st.Latest.TagName,
+		LatestURL:       st.Latest.HTMLURL,
+		UpdateAvailable: st.UpdateAvailable,
+	})
 }
 
 func (h *Handler) handleUpdate(w http.ResponseWriter, r *http.Request) {

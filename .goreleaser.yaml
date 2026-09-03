@@ -109,7 +109,6 @@ dockers_v2:
       - clawy
     images:
       - "ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/clawy"
-      - 'docker.io/{{ .Env.DOCKERHUB_IMAGE_NAME }}'
     tags:
       - '{{ if isEnvSet "NIGHTLY_BUILD" }}nightly{{ else }}{{ .Tag }}{{ end }}'
       - '{{ if isEnvSet "NIGHTLY_BUILD" }}nightly{{ else }}latest{{ end }}'
@@ -125,7 +124,6 @@ dockers_v2:
       - clawy-launcher
     images:
       - "ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/clawy"
-      - 'docker.io/{{ .Env.DOCKERHUB_IMAGE_NAME }}'
     tags:
       - '{{ if isEnvSet "NIGHTLY_BUILD" }}nightly-launcher{{ else }}{{ .Tag }}-launcher{{ end }}'
       - '{{ if isEnvSet "NIGHTLY_BUILD" }}nightly-launcher{{ else }}launcher{{ end }}'
@@ -133,6 +131,11 @@ dockers_v2:
       - linux/amd64
       - linux/arm64
       - linux/riscv64
+
+# Docker Hub pushes are handled by .github/workflows/docker-build.yml (optional).
+# GoReleaser publishes container images to GitHub Packages (ghcr.io) so
+# releases work on forks without Docker Hub credentials. Set
+# DOCKERHUB_REPOSITORY + secrets to enable the separate Docker Hub workflow.
 
 notarize:
   macos:
@@ -205,6 +208,13 @@ changelog:
     exclude:
       - "^docs:"
       - "^test:"
+
+checksum:
+  name_template: "checksums.txt"
+  algorithm: sha256
+
+snapshot:
+  version_template: "{{ .Tag }}-next"
 
 # upx:
 #    - enabled: true

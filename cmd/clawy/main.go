@@ -156,6 +156,14 @@ func main() {
 
 	fmt.Printf("Clawy %s\n", config.FormatVersion())
 
+	// Non-blocking update notification: show the cached result (if any)
+	// and refresh the cache in the background for the next run.
+	// Never blocks startup; disable with CLAWY_NO_UPDATE_CHECK=1.
+	if notice, ok := updater.CachedUpdateNotice(); ok && notice != "" {
+		fmt.Fprintln(os.Stderr, notice)
+	}
+	go updater.RefreshUpdateCache()
+
 	tzEnv := os.Getenv("TZ")
 	if tzEnv != "" {
 		fmt.Println("TZ environment:", tzEnv)

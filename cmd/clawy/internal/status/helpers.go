@@ -9,6 +9,7 @@ import (
 	"github.com/Kantemba/clawy/pkg/auth"
 	"github.com/Kantemba/clawy/pkg/config"
 	"github.com/Kantemba/clawy/pkg/providers"
+	"github.com/Kantemba/clawy/pkg/updater"
 )
 
 func statusCmd() {
@@ -142,4 +143,8 @@ func statusCmd() {
 	}
 
 	cliui.PrintStatus(report)
+
+	if notice, ok := updater.CachedUpdateNotice(); ok && notice != "" {
+		fmt.Fprintln(os.Stderr, notice)
+	}
 }

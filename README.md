@@ -91,6 +91,22 @@
 
 Visit **[clawy.io](https://clawy.io)** — the official website auto-detects your platform and provides one-click download.
 
+```bash
+# Linux / macOS (installs clawy + clawy-launcher to ~/.local/bin)
+curl -fsSL https://raw.githubusercontent.com/Kantemba/clawy/main/scripts/install.sh | sh
+```
+
+Container images (GitHub Packages) are published on every release:
+
+```bash
+docker pull ghcr.io/kantemba/clawy:latest
+docker pull ghcr.io/kantemba/clawy:launcher
+```
+
+Installed binaries self-notify on new releases (cached daily, offline-safe).
+Disable with `CLAWY_NO_UPDATE_CHECK=1`. Check manually with
+`clawy update --check` / `clawy version --check`, upgrade with `clawy update`.
+
 ### Manual Install
 
 Grab the right artifact from [GitHub Releases](https://github.com/Kantemba/clawy/releases):
@@ -354,7 +370,8 @@ clawy mcp test filesystem
 | `clawy agent` | Interactive chat mode |
 | `clawy gateway` | Start the gateway |
 | `clawy status` | Show status |
-| `clawy version` | Show version info |
+| `clawy version` | Show version info (`--check` queries GitHub releases) |
+| `clawy update` | Check + apply updates (`--check` only checks, `--nightly` uses nightly) |
 | `clawy model` | View or switch the default model |
 | `clawy mcp list\|add\|test\|edit\|remove` | Manage MCP servers |
 | `clawy cron list\|add\|disable\|remove` | Manage scheduled jobs |

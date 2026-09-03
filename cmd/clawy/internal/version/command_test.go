@@ -17,7 +17,8 @@ func TestNewVersionCommand(t *testing.T) {
 	assert.Len(t, cmd.Aliases, 1)
 	assert.True(t, cmd.HasAlias("v"))
 
-	assert.False(t, cmd.HasFlags())
+	assert.True(t, cmd.HasFlags())
+	assert.NotNil(t, cmd.Flags().Lookup("check"))
 
 	assert.Equal(t, "Show version information", cmd.Short)
 

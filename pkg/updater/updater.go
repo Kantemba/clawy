@@ -699,6 +699,7 @@ func findBinaryInDir(dir, programName string) (string, error) {
 // NewUpdateCommand returns a cobra command that triggers UpdateSelfFromRelease.
 func NewUpdateCommand(binaryName string) *cobra.Command {
 	var urlStr, platform, arch string
+	var checkOnly, force, nightly bool
 	cmd := &cobra.Command{
 		Use:   "update",
 		Short: "Check and apply updates from GitHub releases",
@@ -709,8 +710,51 @@ func NewUpdateCommand(binaryName string) *cobra.Command {
 			if arch == "" {
 				arch = runtime.GOARCH
 			}
-			fmt.Printf("Current version: %s\n", config.FormatVersion())
-			if err := UpdateSelfFromRelease(urlStr, platform, arch, binaryName); err != nil {
+			current := config.FormatVersion()
+			fmt.Printf("Current version: %s\n", current)
+
+			apiURL := urlStr
+			if nightly && apiURL == "" {
+				apiURL = GetNightlyReleaseAPIURL()
+			}
+			// When no explicit URL is given, compare against the latest
+			// release first so `clawy update` tells the user instead of
+			// blindly re-downloading the running version.
+			if apiURL == "" && !force {
+				st, err := CheckForUpdate(config.GetVersion())
+				if err != nil {
+					fmt.Printf("Update check failed: %v\n", err)
+				} else {
+					saveCachedStatus(st)
+					fmt.Printf("Latest version: %s\n", displayVersion(st.Latest.TagName))
+					if checkOnly {
+						if notice := FormatUpdateNotice(st); notice != "" {
+							fmt.Println(notice)
+						} else {
+							fmt.Println("Already up to date.")
+						}
+						return nil
+					}
+					if !st.UpdateAvailable {
+						fmt.Println("Already up to date.")
+						return nil
+					}
+					fmt.Printf("Update available: %s → %s\n",
+						displayVersion(st.Current), displayVersion(st.Latest.TagName))
+				}
+			} else if checkOnly {
+				st, err := CheckForUpdate(config.GetVersion())
+				if err != nil {
+					return err
+				}
+				if notice := FormatUpdateNotice(st); notice != "" {
+					fmt.Println(notice)
+				} else {
+					fmt.Println("Already up to date.")
+				}
+				return nil
+			}
+			if err := UpdateSelfFromRelease(apiURL, platform, arch, binaryName); err != nil {
 				return err
 			}
 			fmt.Println("Update applied; restart to use the new version.")
@@ -720,5 +764,8 @@ func NewUpdateCommand(binaryName string) *cobra.Command {
 	cmd.Flags().StringVarP(&urlStr, "url", "u", "", "Direct URL to download release asset or release page")
 	cmd.Flags().StringVar(&platform, "platform", "", "Target platform (default: runtime.GOOS)")
 	cmd.Flags().StringVar(&arch, "arch", "", "Target arch (default: runtime.GOARCH)")
+	cmd.Flags().BoolVar(&checkOnly, "check", false, "Only check for updates, do not download or apply")
+	cmd.Flags().BoolVar(&force, "force", false, "Skip version check and re-install even if up to date")
+	cmd.Flags().BoolVar(&nightly, "nightly", false, "Update from the nightly release instead of latest stable")
 	return cmd
 }
