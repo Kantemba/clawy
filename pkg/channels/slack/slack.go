@@ -352,24 +352,16 @@ func (c *SlackChannel) handleMessageEvent(ev *slackevents.MessageEvent) {
 	content := ev.Text
 	content = c.stripBotMention(content)
 
-	// In non-DM channels, apply group trigger filtering
-	if !strings.HasPrefix(channelID, "D") {
-		respond, cleaned := c.ShouldRespondInGroup(false, content)
-		if !respond {
-			return
-		}
-		content = cleaned
-	}
-
 	var mediaPaths []string
 
 	scope := channels.BuildMediaScope("slack", chatID, messageTS)
 
 	// Helper to register a local file with the media store
-	storeMedia := func(localPath, filename string) string {
+	storeMedia := func(localPath, filename, contentType string) string {
 		if store := c.GetMediaStore(); store != nil {
 			ref, err := store.Store(localPath, media.MediaMeta{
 				Filename:      filename,
+				ContentType:   contentType,
 				Source:        "slack",
 				CleanupPolicy: media.CleanupPolicyDeleteOnCleanup,
 			}, scope)
@@ -386,9 +378,24 @@ func (c *SlackChannel) handleMessageEvent(ev *slackevents.MessageEvent) {
 			if localPath == "" {
 				continue
 			}
-			mediaPaths = append(mediaPaths, storeMedia(localPath, file.Name))
-			content += fmt.Sprintf("\n[file: %s]", file.Name)
+			mediaPaths = append(mediaPaths, storeMedia(localPath, file.Name, file.Mimetype))
+			if utils.IsAudioFile(file.Name, file.Mimetype) {
+				content += "\n[audio]"
+			} else {
+				content += fmt.Sprintf("\n[file: %s]", file.Name)
+			}
 		}
+	}
+
+	// In non-DM channels, apply group trigger filtering. This runs after
+	// media handling so voice-only messages still reach the pipeline (the
+	// transcription step runs before the LLM sees them).
+	if !strings.HasPrefix(channelID, "D") {
+		respond, cleaned := c.ShouldRespondInGroup(false, content)
+		if !respond {
+			return
+		}
+		content = cleaned
 	}
 
 	if strings.TrimSpace(content) == "" {

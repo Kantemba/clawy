@@ -51,7 +51,9 @@ func (t *MemoryTool) Description() string {
 		"Entries are capped (~2.2k chars for 'memory', ~1.4k for 'user') so keep them terse and consolidated — " +
 		"when full you MUST remove or replace stale entries before adding new ones. " +
 		"NEVER store credentials, API keys, or secrets. " +
-		"Use proactively: whenever you learn something durable about the user or the task, persist it."
+		"Use proactively — this is how you self-improve: whenever you learn something durable about the user or the task, " +
+		"persist it immediately; whenever the user corrects you, update memory so it never repeats. " +
+		"Save user facts to 'user', task/project lessons to 'memory'."
 }
 
 func (t *MemoryTool) Parameters() map[string]any {

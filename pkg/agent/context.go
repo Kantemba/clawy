@@ -166,6 +166,7 @@ func (cb *ContextBuilder) getIdentity(includeToolUseRule bool) string {
 			fmt.Sprintf(
 				"**Persistent memory** - Your MEMORY.md and USER.md are preloaded into every conversation and managed exclusively via the `memory` tool (never edit them with file tools). When you learn something durable about the user, their preferences, or the task, persist it right away so future sessions start smarter; recall past chats with `session_search`.",
 			),
+			"**Self-improve every turn** - As you interact more, get better: (1) recall relevant memory / past sessions before hard tasks, (2) notice durable learnings (user facts, preferences, project gotchas, corrections you received) and persist them with the `memory` tool immediately, (3) when the user corrects you, update memory so the mistake never repeats, (4) keep entries short, factual, deduplicated — consolidate when full.",
 		)
 	}
 	for i, rule := range rules {

@@ -16,7 +16,7 @@ import (
 	"github.com/Kantemba/clawy/pkg/media"
 )
 
-var audioExtensions = []string{".mp3", ".wav", ".ogg", ".m4a", ".flac", ".aac", ".wma"}
+var audioExtensions = []string{".mp3", ".wav", ".ogg", ".oga", ".opus", ".m4a", ".flac", ".aac", ".wma"}
 
 func AudioFormat(path string) (string, error) {
 	ext := strings.ToLower(filepath.Ext(path))

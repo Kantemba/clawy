@@ -6,8 +6,10 @@ package dingtalk
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/open-dingtalk/dingtalk-stream-sdk-go/chatbot"
 	"github.com/open-dingtalk/dingtalk-stream-sdk-go/client"
@@ -33,6 +35,21 @@ type DingTalkChannel struct {
 	cancel       context.CancelFunc
 	// Map to store session webhooks for each chat
 	sessionWebhooks sync.Map // chatID -> sessionWebhook
+
+	tokenMu     sync.Mutex
+	apiToken    string
+	tokenExpiry time.Time
+	httpClient  *http.Client
+}
+
+// mediaHTTP returns the HTTP client used for media/token API calls.
+func (c *DingTalkChannel) mediaHTTP() *http.Client {
+	c.tokenMu.Lock()
+	defer c.tokenMu.Unlock()
+	if c.httpClient == nil {
+		c.httpClient = &http.Client{Timeout: voiceHTTPTimeout}
+	}
+	return c.httpClient
 }
 
 // NewDingTalkChannel creates a new DingTalk channel instance

@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Kantemba/clawy/pkg/fileutil"
 	"github.com/Kantemba/clawy/pkg/providers"
 )
 
@@ -115,7 +116,10 @@ func (r *LLMIdentityCurator) Curate(ctx context.Context, input IdentityCurateInp
 	result := IdentityCurateResult{}
 	soulText, soulChanged := applyFacts(readFileOrEmpty(soulPath), facts.Soul, maxFactsPerTurn)
 	if soulChanged {
-		if err := os.WriteFile(soulPath, []byte(soulText), 0o644); err == nil {
+		// Atomic write: USER.md/SOUL.md are shared with the agent's `memory`
+		// tool, which also writes atomically — a plain write here could
+		// interleave with a concurrent memory update and corrupt the file.
+		if err := fileutil.WriteFileAtomic(soulPath, []byte(soulText), 0o644); err == nil {
 			result.Updated = true
 			result.SoulFacts = facts.Soul
 		}
@@ -123,7 +127,7 @@ func (r *LLMIdentityCurator) Curate(ctx context.Context, input IdentityCurateInp
 	userPath := userPath(r.workspace)
 	userText, userChanged := applyFacts(readFileOrEmpty(userPath), facts.User, maxFactsPerTurn)
 	if userChanged {
-		if err := os.WriteFile(userPath, []byte(userText), 0o644); err == nil {
+		if err := fileutil.WriteFileAtomic(userPath, []byte(userText), 0o644); err == nil {
 			result.Updated = true
 			result.UserFacts = facts.User
 		}

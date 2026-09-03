@@ -18,6 +18,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/mdp/qrterminal/v3"
 	"go.mau.fi/whatsmeow"
 	"go.mau.fi/whatsmeow/proto/waE2E"
@@ -33,6 +34,7 @@ import (
 	"github.com/Kantemba/clawy/pkg/config"
 	"github.com/Kantemba/clawy/pkg/identity"
 	"github.com/Kantemba/clawy/pkg/logger"
+	"github.com/Kantemba/clawy/pkg/media"
 	"github.com/Kantemba/clawy/pkg/utils"
 )
 
@@ -354,11 +356,40 @@ func (c *WhatsAppNativeChannel) handleIncoming(evt *events.Message) {
 	}
 	content = utils.SanitizeMessageContent(content)
 
-	if content == "" {
+	sender := bus.SenderInfo{
+		Platform:    "whatsapp",
+		PlatformID:  senderID,
+		CanonicalID: identity.BuildCanonicalID("whatsapp", senderID),
+		DisplayName: evt.Info.PushName,
+	}
+
+	// Check the allowlist before downloading any media so rejected senders
+	// never trigger network or disk work.
+	if !c.IsAllowedSender(sender) {
 		return
 	}
 
+	c.mu.Lock()
+	client := c.client
+	c.mu.Unlock()
+
 	var mediaPaths []string
+	var voiceTag string
+	if audioMsg := evt.Message.GetAudioMessage(); audioMsg != nil && client != nil {
+		scope := channels.BuildMediaScope("whatsapp", chatID, evt.Info.ID)
+		voiceTag = c.downloadInboundAudio(c.runCtx, client, audioMsg, scope, &mediaPaths)
+	}
+
+	if content == "" && len(mediaPaths) == 0 {
+		return
+	}
+	if voiceTag != "" {
+		if content == "" {
+			content = voiceTag
+		} else {
+			content += "\n" + voiceTag
+		}
+	}
 
 	metadata := make(map[string]string)
 	metadata["message_id"] = evt.Info.ID
@@ -378,16 +409,6 @@ func (c *WhatsAppNativeChannel) handleIncoming(evt *events.Message) {
 		peerKind = "group"
 	}
 	messageID := evt.Info.ID
-	sender := bus.SenderInfo{
-		Platform:    "whatsapp",
-		PlatformID:  senderID,
-		CanonicalID: identity.BuildCanonicalID("whatsapp", senderID),
-		DisplayName: evt.Info.PushName,
-	}
-
-	if !c.IsAllowedSender(sender) {
-		return
-	}
 
 	logger.DebugCF(
 		"whatsapp",
@@ -456,4 +477,89 @@ func parseJID(s string) (types.JID, error) {
 		return types.ParseJID(s)
 	}
 	return types.NewJID(s, types.DefaultUserServer), nil
+}
+
+// downloadInboundAudio downloads a WhatsApp voice note / audio message,
+// registers it with the media store, and returns the annotation tag to append
+// to the message content ("[voice]" for push-to-talk notes, "[audio]" for
+// regular audio clips). Media refs are appended to mediaPaths.
+func (c *WhatsAppNativeChannel) downloadInboundAudio(
+	ctx context.Context,
+	client *whatsmeow.Client,
+	audioMsg *waE2E.AudioMessage,
+	scope string,
+	mediaPaths *[]string,
+) string {
+	store := c.GetMediaStore()
+	if store == nil {
+		logger.WarnCF("whatsapp", "Audio message received but media store is unavailable", nil)
+		return ""
+	}
+
+	dlCtx, cancel := context.WithTimeout(ctx, 60*time.Second)
+	defer cancel()
+
+	data, err := client.Download(dlCtx, audioMsg)
+	if err != nil {
+		logger.WarnCF("whatsapp", "Failed to download WhatsApp audio message", map[string]any{
+			"error": err.Error(),
+		})
+		return ""
+	}
+
+	mimetype := audioMsg.GetMimetype()
+	ext := whatsappAudioExtension(mimetype)
+	filename := "voice" + ext
+
+	if err := os.MkdirAll(media.TempDir(), 0o700); err != nil {
+		logger.WarnCF("whatsapp", "Failed to create media directory", map[string]any{
+			"error": err.Error(),
+		})
+		return ""
+	}
+	localPath := filepath.Join(media.TempDir(), uuid.New().String()[:8]+"_"+filename)
+	if err := os.WriteFile(localPath, data, 0o600); err != nil {
+		logger.WarnCF("whatsapp", "Failed to write downloaded audio", map[string]any{
+			"error": err.Error(),
+		})
+		return ""
+	}
+
+	ref, err := store.Store(localPath, media.MediaMeta{
+		Filename:      filename,
+		ContentType:   mimetype,
+		Source:        "whatsapp",
+		CleanupPolicy: media.CleanupPolicyDeleteOnCleanup,
+	}, scope)
+	if err != nil {
+		logger.WarnCF("whatsapp", "Failed to register audio with media store", map[string]any{
+			"error": err.Error(),
+		})
+		return ""
+	}
+
+	*mediaPaths = append(*mediaPaths, ref)
+
+	if audioMsg.GetPTT() {
+		return "[voice]"
+	}
+	return "[audio]"
+}
+
+// whatsappAudioExtension maps an audio mimetype to a file extension that the
+// transcription pipeline recognizes. WhatsApp voice notes are Opus-encoded
+// Ogg files, so audio/ogg is the expected case.
+func whatsappAudioExtension(mimetype string) string {
+	switch strings.ToLower(strings.TrimSpace(mimetype)) {
+	case "audio/mpeg", "audio/mp3":
+		return ".mp3"
+	case "audio/mp4", "audio/x-m4a", "audio/aac":
+		return ".m4a"
+	case "audio/wav", "audio/x-wav":
+		return ".wav"
+	case "audio/flac":
+		return ".flac"
+	default:
+		return ".ogg"
+	}
 }

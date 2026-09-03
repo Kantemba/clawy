@@ -4,6 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
+	"path/filepath"
+	"regexp"
 	"sync"
 	"time"
 
@@ -14,6 +17,7 @@ import (
 	"github.com/Kantemba/clawy/pkg/config"
 	"github.com/Kantemba/clawy/pkg/identity"
 	"github.com/Kantemba/clawy/pkg/logger"
+	"github.com/Kantemba/clawy/pkg/media"
 	"github.com/Kantemba/clawy/pkg/utils"
 )
 
@@ -27,6 +31,10 @@ type WhatsAppChannel struct {
 	mu        sync.Mutex
 	connected bool
 }
+
+// bridgeAudioAnnotationRe matches existing voice/audio annotations in bridge
+// message content so we do not append duplicate tags.
+var bridgeAudioAnnotationRe = regexp.MustCompile(`\[(voice|audio)(?::[^\]]*)?\]`)
 
 func NewWhatsAppChannel(
 	bc *config.Channel,
@@ -245,6 +253,32 @@ func (c *WhatsAppChannel) handleIncomingMessage(msg map[string]any) {
 		return
 	}
 
+	// Register audio files delivered by the bridge with the media store so
+	// the transcription pipeline can resolve them; other media keeps the
+	// legacy raw-path passthrough.
+	audioCount := 0
+	scope := channels.BuildMediaScope("whatsapp", chatID, messageID)
+	registered := make([]string, 0, len(mediaPaths))
+	for _, path := range mediaPaths {
+		if utils.IsAudioFile(path, "") {
+			if ref := c.registerBridgeAudio(path, scope); ref != "" {
+				registered = append(registered, ref)
+				audioCount++
+				continue
+			}
+		}
+		registered = append(registered, path)
+	}
+	if audioCount > 0 {
+		tag := "[voice]"
+		if content == "" {
+			content = tag
+		} else if !bridgeAudioAnnotationRe.MatchString(content) {
+			content += "\n" + tag
+		}
+	}
+	mediaPaths = registered
+
 	inboundCtx := bus.InboundContext{
 		Channel:   "whatsapp",
 		ChatID:    chatID,
@@ -259,4 +293,31 @@ func (c *WhatsAppChannel) handleIncomingMessage(msg map[string]any) {
 	}
 
 	c.HandleInboundContext(c.ctx, chatID, content, mediaPaths, inboundCtx, sender)
+}
+
+// registerBridgeAudio registers a bridge-provided local audio file with the
+// media store and returns the ref. Returns "" when registration is not
+// possible. The underlying file is owned by the bridge, so forget-only
+// cleanup is used.
+func (c *WhatsAppChannel) registerBridgeAudio(path, scope string) string {
+	store := c.GetMediaStore()
+	if store == nil {
+		return ""
+	}
+	info, err := os.Stat(path)
+	if err != nil || info.IsDir() {
+		return ""
+	}
+	ref, err := store.Store(path, media.MediaMeta{
+		Filename:      filepath.Base(path),
+		Source:        "whatsapp",
+		CleanupPolicy: media.CleanupPolicyForgetOnly,
+	}, scope)
+	if err != nil {
+		logger.WarnCF("whatsapp", "Failed to register bridge audio with media store", map[string]any{
+			"error": err.Error(),
+		})
+		return ""
+	}
+	return ref
 }

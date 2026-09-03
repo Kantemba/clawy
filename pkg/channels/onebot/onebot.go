@@ -4,6 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/url"
+	"path"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"sync"
@@ -751,10 +754,11 @@ func (c *OneBotChannel) parseMessageSegments(
 	var replyTo string
 
 	// Helper to register a local file with the media store
-	storeFile := func(localPath, filename string) string {
+	storeFile := func(localPath, filename, contentType string) string {
 		if store != nil {
 			ref, err := store.Store(localPath, media.MediaMeta{
 				Filename:      filename,
+				ContentType:   contentType,
 				Source:        "onebot",
 				CleanupPolicy: media.CleanupPolicyDeleteOnCleanup,
 			}, scope)
@@ -798,7 +802,7 @@ func (c *OneBotChannel) parseMessageSegments(
 					}
 					localPath := c.downloadInboundFile(url, filename)
 					if localPath != "" {
-						mediaRefs = append(mediaRefs, storeFile(localPath, filename))
+						mediaRefs = append(mediaRefs, storeFile(localPath, filename, ""))
 						textParts = append(textParts, fmt.Sprintf("[%s]", segType))
 					}
 				}
@@ -808,10 +812,11 @@ func (c *OneBotChannel) parseMessageSegments(
 			if data != nil {
 				url, _ := data["url"].(string)
 				if url != "" {
-					localPath := c.downloadInboundFile(url, "voice.amr")
+					filename := onebotVoiceFilename(url)
+					localPath := c.downloadInboundFile(url, filename)
 					if localPath != "" {
 						textParts = append(textParts, "[voice]")
-						mediaRefs = append(mediaRefs, storeFile(localPath, "voice.amr"))
+						mediaRefs = append(mediaRefs, storeFile(localPath, filename, onebotVoiceContentType(filename)))
 					}
 				}
 			}
@@ -852,6 +857,45 @@ func (c *OneBotChannel) downloadInboundFile(urlStr, filename string) string {
 		LoggerPrefix:        "onebot",
 		BlockPrivateTargets: true,
 	})
+}
+
+// onebotVoiceFilename derives the voice-note filename from the record
+// segment's download URL so the real audio extension is preserved when the
+// implementation serves one. Falls back to voice.amr, the most common OneBot
+// voice encoding.
+func onebotVoiceFilename(rawURL string) string {
+	if u, err := url.Parse(rawURL); err == nil {
+		base := path.Base(u.EscapedPath())
+		switch strings.ToLower(filepath.Ext(base)) {
+		case ".amr", ".silk", ".mp3", ".wav", ".ogg", ".oga", ".m4a", ".aac", ".flac":
+			return base
+		}
+	}
+	return "voice.amr"
+}
+
+// onebotVoiceContentType maps a voice filename to an audio content type so
+// the transcription pipeline recognizes it even for extensions outside the
+// default list.
+func onebotVoiceContentType(filename string) string {
+	switch strings.ToLower(filepath.Ext(filename)) {
+	case ".amr":
+		return "audio/amr"
+	case ".silk":
+		return "audio/silk"
+	case ".mp3":
+		return "audio/mpeg"
+	case ".wav":
+		return "audio/wav"
+	case ".ogg":
+		return "audio/ogg"
+	case ".oga":
+		return "audio/ogg"
+	case ".m4a":
+		return "audio/mp4"
+	default:
+		return ""
+	}
 }
 
 func (c *OneBotChannel) handleRawEvent(raw *oneBotRawEvent) {

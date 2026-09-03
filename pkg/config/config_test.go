@@ -298,7 +298,7 @@ func TestDefaultConfig_MCPMaxInlineTextChars(t *testing.T) {
 func TestDefaultConfig_EvolutionDefaults(t *testing.T) {
 	cfg := DefaultConfig()
 
-	assert.False(t, cfg.Evolution.Enabled)
+	assert.True(t, cfg.Evolution.Enabled)
 	assert.Equal(t, "observe", cfg.Evolution.Mode)
 	assert.Equal(t, "", cfg.Evolution.StateDir)
 	assert.Equal(t, 2, cfg.Evolution.MinTaskCount)
@@ -605,6 +605,7 @@ func TestLoadConfig_EvolutionOnlineRevision(t *testing.T) {
 
 func TestSaveConfig_DisabledEvolutionOmitsOnlineRevision(t *testing.T) {
 	cfg := DefaultConfig()
+	cfg.Evolution.Enabled = false
 	assert.False(t, cfg.Evolution.EffectiveOnlineRevision())
 
 	data, err := json.Marshal(cfg.Evolution)
@@ -645,14 +646,15 @@ func TestDefaultConfig_OnlineLearningDefaults(t *testing.T) {
 	cfg := DefaultConfig()
 	assert.True(t, cfg.Evolution.OnlineRevision, "online revision should be on by default")
 	assert.True(t, cfg.Evolution.IdentityCuration, "identity curation should be on by default")
-	assert.False(t, cfg.Evolution.EffectiveOnlineRevision(), "disabled evolution must not activate online revision")
-	assert.False(t, cfg.Evolution.EffectiveIdentityCuration(), "disabled evolution must not activate identity curation")
+	assert.True(t, cfg.Evolution.EffectiveOnlineRevision(), "enabled-by-default evolution must activate online revision")
+	assert.True(t, cfg.Evolution.EffectiveIdentityCuration(), "enabled-by-default evolution must activate identity curation")
 }
 
 func TestSaveConfig_DisabledEvolutionOmitsApplyMode(t *testing.T) {
 	dir := t.TempDir()
 	configPath := filepath.Join(dir, "config.json")
 	cfg := DefaultConfig()
+	cfg.Evolution.Enabled = false
 
 	if err := SaveConfig(configPath, cfg); err != nil {
 		t.Fatalf("SaveConfig() error: %v", err)

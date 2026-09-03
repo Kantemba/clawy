@@ -328,9 +328,14 @@ func (ms *MemoryStore) RemoveEntry(target, oldText string) error {
 func (ms *MemoryStore) GetMemoryContext() string {
 	var sb strings.Builder
 
-	sb.WriteString("# Memory\n\n")
+	sb.WriteString("# Memory — how you self-improve\n\n")
 	sb.WriteString("You have persistent memory that is preloaded into every conversation. ")
 	sb.WriteString("Manage it ONLY with the `memory` tool; recall past conversations with `session_search`.\n\n")
+	sb.WriteString("Self-improvement loop (run it every substantive turn):\n")
+	sb.WriteString("1. Recall: before answering anything non-trivial, check these sections and use `session_search` if the answer may lie in past chats.\n")
+	sb.WriteString("2. Learn: when you discover something durable — a user fact/preference, a project decision, a gotcha, a correction to your behavior — persist it immediately with action=add (one short fact per entry).\n")
+	sb.WriteString("3. Correct: when the user corrects you, update memory (action=replace/remove) so the mistake never repeats.\n")
+	sb.WriteString("4. Consolidate: keep entries terse and deduplicated; when full, remove or replace stale entries before adding new ones.\n\n")
 
 	sb.WriteString("## MEMORY.md — your private notes\n")
 	sb.WriteString("Durable lessons, project state, decisions, gotchas. Keep entries short, factual, and deduplicated. When full, consolidate: remove or replace stale entries before adding new ones. Never store credentials.\n")

@@ -49,7 +49,15 @@ func DefaultConfig() *Config {
 			Dimensions: []string{"chat"},
 		},
 		Evolution: EvolutionConfig{
-			Enabled:         false,
+			// On by default in observe mode: every turn is recorded locally
+			// (cheap disk append, no LLM), while LLM-backed learning stays
+			// bounded — identity curation at most once per 5min per workspace,
+			// skill revision only on failed turns with an active skill, and no
+			// cold-path batch runs (those require mode draft/apply). All LLM
+			// components fall back to local heuristics (or no-op) when no
+			// provider is configured, so offline / $10-hardware setups pay
+			// nothing. Set enabled=false to opt out entirely.
+			Enabled:         true,
 			Mode:            "observe",
 			MinTaskCount:    2,
 			MinSuccessRatio: 0.7,

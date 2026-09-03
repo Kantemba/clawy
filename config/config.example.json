@@ -22,13 +22,16 @@
     }
   },
   "evolution": {
-    "enabled": false,
+    "_comment": "Self-improvement, on by default in observe mode: turns are recorded locally (no LLM cost); identity_curation learns SOUL.md/USER.md facts at most once per 5min; online_revision drafts skill fixes only after failed turns; cold-path batch runs require mode draft/apply. Set enabled=false to opt out.",
+    "enabled": true,
     "mode": "observe",
     "state_dir": "",
     "min_task_count": 2,
     "min_success_ratio": 0.7,
     "cold_path_trigger": "after_turn",
-    "cold_path_times": []
+    "cold_path_times": [],
+    "online_revision": true,
+    "identity_curation": true
   },
   "model_list": [
     {

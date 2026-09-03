@@ -513,6 +513,16 @@ func (c *WeComChannel) dispatchIncoming(reqID string, msg wecomIncomingMessage) 
 		if msg.Voice != nil {
 			content = strings.TrimSpace(msg.Voice.Content)
 		}
+		// WeCom usually provides its own transcript in Content. When it is
+		// missing, download the raw voice recording so the configured STT
+		// model can transcribe it.
+		if content == "" && msg.Voice != nil && msg.Voice.URL != "" {
+			mediaRefs, err = c.collectSingleMedia(c.ctx, scope, msg.MsgID, &mediaPayload{
+				url:    msg.Voice.URL,
+				aesKey: msg.Voice.AESKey,
+			}, "voice", ".amr")
+			content = "[voice]"
+		}
 	case "image":
 		content = "[image]"
 		mediaRefs, err = c.collectSingleMedia(c.ctx, scope, msg.MsgID, &mediaPayload{
@@ -675,6 +685,22 @@ func (c *WeComChannel) collectMixedMedia(
 					return "", nil, err
 				}
 				refs = append(refs, ref)
+			}
+		case "voice":
+			if item.Voice != nil && item.Voice.URL != "" {
+				ref, err := c.storeRemoteMedia(
+					ctx,
+					scope,
+					fmt.Sprintf("%s-%d", msg.MsgID, idx),
+					item.Voice.URL,
+					item.Voice.AESKey,
+					".amr",
+				)
+				if err != nil {
+					return "", nil, err
+				}
+				refs = append(refs, ref)
+				textParts = append(textParts, "[voice]")
 			}
 		}
 	}

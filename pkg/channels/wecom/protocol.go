@@ -129,7 +129,9 @@ type wecomIncomingMessage struct {
 		AESKey string `json:"aeskey,omitempty"`
 	} `json:"video,omitempty"`
 	Voice *struct {
-		Content string `json:"content"`
+		Content string `json:"content,omitempty"`
+		URL     string `json:"url,omitempty"`
+		AESKey  string `json:"aeskey,omitempty"`
 	} `json:"voice,omitempty"`
 	Mixed *struct {
 		MsgItem []struct {
@@ -145,6 +147,10 @@ type wecomIncomingMessage struct {
 				URL    string `json:"url"`
 				AESKey string `json:"aeskey,omitempty"`
 			} `json:"file,omitempty"`
+			Voice *struct {
+				URL    string `json:"url"`
+				AESKey string `json:"aeskey,omitempty"`
+			} `json:"voice,omitempty"`
 		} `json:"msg_item"`
 	} `json:"mixed,omitempty"`
 	Quote *struct {

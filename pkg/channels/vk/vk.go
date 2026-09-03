@@ -17,6 +17,8 @@ import (
 	"github.com/Kantemba/clawy/pkg/config"
 	"github.com/Kantemba/clawy/pkg/identity"
 	"github.com/Kantemba/clawy/pkg/logger"
+	"github.com/Kantemba/clawy/pkg/media"
+	"github.com/Kantemba/clawy/pkg/utils"
 )
 
 type VKChannel struct {
@@ -148,11 +150,28 @@ func (c *VKChannel) handleMessage(msg object.MessagesMessage) {
 	}
 
 	text := msg.Text
-	if text == "" && len(msg.Attachments) > 0 {
-		text = c.processAttachments(msg.Attachments)
+	messageID := strconv.Itoa(msg.ConversationMessageID)
+	var mediaRefs []string
+	if len(msg.Attachments) > 0 {
+		scope := channels.BuildMediaScope("vk", chatID, messageID)
+		storeMedia := func(localPath, filename, contentType string) string {
+			if store := c.GetMediaStore(); store != nil {
+				ref, err := store.Store(localPath, media.MediaMeta{
+					Filename:      filename,
+					ContentType:   contentType,
+					Source:        "vk",
+					CleanupPolicy: media.CleanupPolicyDeleteOnCleanup,
+				}, scope)
+				if err == nil {
+					return ref
+				}
+			}
+			return localPath // fallback
+		}
+		text = c.processAttachments(msg.Attachments, storeMedia, &mediaRefs)
 	}
 
-	if text == "" {
+	if text == "" && len(mediaRefs) == 0 {
 		return
 	}
 
@@ -177,14 +196,12 @@ func (c *VKChannel) handleMessage(msg object.MessagesMessage) {
 		chatType = "group"
 	}
 
-	messageID := strconv.Itoa(msg.ConversationMessageID)
-
 	metadata := map[string]string{
 		"user_id":  userID,
 		"is_group": fmt.Sprintf("%t", isGroupChat),
 	}
 
-	c.HandleInboundContext(c.ctx, chatID, text, nil, bus.InboundContext{
+	c.HandleInboundContext(c.ctx, chatID, text, mediaRefs, bus.InboundContext{
 		Channel:   "vk",
 		ChatID:    chatID,
 		ChatType:  chatType,
@@ -263,7 +280,11 @@ func (c *VKChannel) getUserName(userID int) string {
 	return fmt.Sprintf("%s %s", user.FirstName, user.LastName)
 }
 
-func (c *VKChannel) processAttachments(attachments []object.MessagesMessageAttachment) string {
+func (c *VKChannel) processAttachments(
+	attachments []object.MessagesMessageAttachment,
+	storeMedia func(localPath, filename, contentType string) string,
+	mediaRefs *[]string,
+) string {
 	var parts []string
 
 	for _, att := range attachments {
@@ -281,6 +302,15 @@ func (c *VKChannel) processAttachments(attachments []object.MessagesMessageAttac
 				parts = append(parts, "[document]")
 			}
 		case "audio_message":
+			// Prefer VK's own transcript when available; otherwise download
+			// the audio so the configured transcriber can produce one.
+			if transcript := strings.TrimSpace(att.AudioMessage.Transcript); transcript != "" {
+				parts = append(parts, "[voice: "+transcript+"]")
+				continue
+			}
+			if ref := c.downloadVoiceMessage(att.AudioMessage, storeMedia); ref != "" {
+				*mediaRefs = append(*mediaRefs, ref)
+			}
 			parts = append(parts, "[voice]")
 		case "sticker":
 			parts = append(parts, "[sticker]")
@@ -288,6 +318,35 @@ func (c *VKChannel) processAttachments(attachments []object.MessagesMessageAttac
 	}
 
 	return strings.Join(parts, " ")
+}
+
+// downloadVoiceMessage downloads a VK audio message (voice note) and
+// registers it with the media store. Returns "" when unavailable.
+func (c *VKChannel) downloadVoiceMessage(
+	audioMsg object.DocsDoc,
+	storeMedia func(localPath, filename, contentType string) string,
+) string {
+	url := strings.TrimSpace(audioMsg.LinkOgg)
+	filename := "voice.ogg"
+	contentType := "audio/ogg"
+	if url == "" {
+		url = strings.TrimSpace(audioMsg.LinkMp3)
+		filename = "voice.mp3"
+		contentType = "audio/mpeg"
+	}
+	if url == "" {
+		return ""
+	}
+
+	localPath := utils.DownloadFile(url, filename, utils.DownloadOptions{
+		LoggerPrefix:        "vk",
+		BlockPrivateTargets: true,
+	})
+	if localPath == "" {
+		logger.WarnCF("vk", "Failed to download VK voice message", nil)
+		return ""
+	}
+	return storeMedia(localPath, filename, contentType)
 }
 
 func (c *VKChannel) VoiceCapabilities() channels.VoiceCapabilities {
