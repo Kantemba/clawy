@@ -51,7 +51,7 @@ func DefaultConfig() *Config {
 		Evolution: EvolutionConfig{
 			// On by default in observe mode: every turn is recorded locally
 			// (cheap disk append, no LLM), while LLM-backed learning stays
-			// bounded — identity curation at most once per 5min per workspace,
+			// bounded — general-skill/user curation at most once per 5min per workspace,
 			// skill revision only on failed turns with an active skill, and no
 			// cold-path batch runs (those require mode draft/apply). All LLM
 			// components fall back to local heuristics (or no-op) when no
@@ -64,7 +64,7 @@ func DefaultConfig() *Config {
 			ColdPathTrigger: "after_turn",
 			// Online by default: when a user enables evolution they get the
 			// closed learning loop (skill self-revision on failed turns and
-			// SOUL.md/USER.md identity curation on successful turns) without
+			// self-improvement skill / USER.md curation on successful turns) without
 			// having to discover these flags. The loop is safe in the default
 			// "observe" mode (revisions are drafted, not auto-applied until
 			// mode="apply"), and both paths are gated on Enabled below. Users
@@ -503,7 +503,7 @@ func DefaultConfig() *Config {
 				MediaEnabled: false,
 			},
 			Memory: ToolConfig{
-				Enabled: true, // Hermes-style curated memory (MEMORY.md/USER.md)
+				Enabled: true, // Curated project/user facts and general skill lessons
 			},
 			ReadFile: ReadFileToolConfig{
 				Enabled:         true,

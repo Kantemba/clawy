@@ -39,10 +39,12 @@ type CuratedStore struct {
 }
 
 func NewCuratedStore(workspace string) *CuratedStore {
-	if abs, err := filepath.Abs(workspace); err == nil {
-		workspace = abs
+	if strings.TrimSpace(workspace) != "" {
+		if abs, err := filepath.Abs(workspace); err == nil {
+			workspace = abs
+		}
+		workspace = filepath.Clean(workspace)
 	}
-	workspace = filepath.Clean(workspace)
 	key := workspace
 	// Windows paths are case insensitive.
 	if filepath.Separator == '\\' {
@@ -53,6 +55,9 @@ func NewCuratedStore(workspace string) *CuratedStore {
 }
 
 func (s *CuratedStore) Path(target string) string {
+	if strings.TrimSpace(s.workspace) == "" {
+		return ""
+	}
 	switch target {
 	case TargetAgent:
 		return filepath.Join(s.workspace, "memory", "MEMORY.md")
@@ -81,6 +86,9 @@ func (s *CuratedStore) Budget(target string) int {
 // EnsureSelfImprovementSkill creates the workflow once; restarts never reset
 // learned rules. An existing incompatible file is preserved, not overwritten.
 func (s *CuratedStore) EnsureSelfImprovementSkill() error {
+	if strings.TrimSpace(s.workspace) == "" {
+		return errors.New("cannot create self-improvement skill: workspace is not configured")
+	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	_, err := os.Stat(s.Path(TargetLearning))
@@ -95,6 +103,9 @@ func (s *CuratedStore) EnsureSelfImprovementSkill() error {
 }
 
 func (s *CuratedStore) readRaw(target string) (string, error) {
+	if strings.TrimSpace(s.workspace) == "" {
+		return "", errors.New("memory workspace is not configured")
+	}
 	path := s.Path(target)
 	if path == "" {
 		return "", fmt.Errorf("unknown memory target %q: use memory, user, or learning", target)

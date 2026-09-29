@@ -1268,7 +1268,7 @@ type ToolsConfig struct {
 	ListDir         ToolConfig         `json:"list_dir"          yaml:"-"                                                       envPrefix:"CLAWY_TOOLS_LIST_DIR_"`
 	LoadImage       ToolConfig         `json:"load_image"        yaml:"-"                                                       envPrefix:"CLAWY_TOOLS_LOAD_IMAGE_"`
 	Message         MessageToolsConfig `json:"message"           yaml:"-"`
-	// Memory gates the Hermes-style curated memory tool (MEMORY.md/USER.md).
+	// Memory gates the project/user/learning memory tool, not background curation.
 	Memory   ToolConfig         `json:"memory"            yaml:"-"                                                       envPrefix:"CLAWY_TOOLS_MEMORY_"`
 	ReadFile ReadFileToolConfig `json:"read_file"         yaml:"-"                                                       envPrefix:"CLAWY_TOOLS_READ_FILE_"`
 	Serial   ToolConfig         `json:"serial"            yaml:"-"                                                       envPrefix:"CLAWY_TOOLS_SERIAL_"`

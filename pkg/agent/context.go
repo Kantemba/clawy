@@ -315,7 +315,7 @@ func (cb *ContextBuilder) buildSystemPromptParts(opts systemPromptBuildOptions) 
 		})
 	}
 
-	// Memory context (Hermes-style snapshot: usage guidance + curated entries)
+	// Bounded factual memory; the learning workflow lives in the general skill.
 	memoryContext := cb.memory.GetMemoryContext()
 	if memoryContext != "" {
 		add(PromptPart{

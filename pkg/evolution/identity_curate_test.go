@@ -83,16 +83,26 @@ func TestParseIdentityFacts_RejectsGarbage(t *testing.T) {
 func TestLLMIdentityCuratorDeduplicatesAndPreservesExistingMemory(t *testing.T) {
 	workspace := t.TempDir()
 	store := memory.NewCuratedStore(workspace)
-	if err := store.AddEntry(memory.TargetLearning, "When debugging, reproduce the problem first."); err != nil { t.Fatal(err) }
-	if err := os.WriteFile(store.Path(memory.TargetUser), []byte("# User\nWorks on embedded devices.\n"), 0o600); err != nil { t.Fatal(err) }
+	if err := store.AddEntry(memory.TargetLearning, "When debugging, reproduce the problem first."); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(store.Path(memory.TargetUser), []byte("# User\nWorks on embedded devices.\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
 	provider := &testIdentityProvider{response: &providers.LLMResponse{
 		Content: `{"learning":["When debugging, reproduce the problem first.","When changing APIs, run compatibility tests."],"user":["Prefers concise answers."]}`,
 	}}
 	curator := identityCuratorFor(t, provider, workspace)
 	result, err := curator.Curate(context.Background(), IdentityCurateInput{Workspace: workspace, Success: true, FinalContent: "Checked."})
-	if err != nil { t.Fatal(err) }
-	if len(result.SoulFacts) != 1 || len(store.ReadEntries(memory.TargetLearning)) != 2 { t.Fatalf("duplicate rule persisted: %#v", result) }
-	if got := store.ReadEntries(memory.TargetUser); len(got) != 2 || !strings.Contains(got[0], "embedded devices") { t.Fatalf("legacy facts lost: %v", got) }
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(result.SoulFacts) != 1 || len(store.ReadEntries(memory.TargetLearning)) != 2 {
+		t.Fatalf("duplicate rule persisted: %#v", result)
+	}
+	if got := store.ReadEntries(memory.TargetUser); len(got) != 2 || !strings.Contains(got[0], "embedded devices") {
+		t.Fatalf("legacy facts lost: %v", got)
+	}
 }
 
 func TestLLMIdentityCuratorCapsEntriesPerTurn(t *testing.T) {
@@ -101,8 +111,12 @@ func TestLLMIdentityCuratorCapsEntriesPerTurn(t *testing.T) {
 		Content: `{"learning":["Rule alpha.","Rule beta.","Rule gamma.","Rule delta."],"user":[]}`,
 	}}
 	result, err := identityCuratorFor(t, provider, workspace).Curate(context.Background(), IdentityCurateInput{Workspace: workspace, Success: true, FinalContent: "Checked."})
-	if err != nil { t.Fatal(err) }
-	if len(result.SoulFacts) != maxFactsPerTurn { t.Fatalf("unbounded additions: %#v", result) }
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(result.SoulFacts) != maxFactsPerTurn {
+		t.Fatalf("unbounded additions: %#v", result)
+	}
 }
 
 func TestLLMIdentityCurator_Curate_PersistsGeneralSkillAndUserFacts(t *testing.T) {
@@ -254,6 +268,21 @@ func TestLLMIdentityCurator_UsesSharedValidationAndBudget(t *testing.T) {
 	}
 	if got := store.ReadEntries(memory.TargetUser); len(got) != 1 {
 		t.Fatal("curator bypassed user budget")
+	}
+}
+
+func TestLLMIdentityCuratorEmptyExtractionAlsoHasCooldown(t *testing.T) {
+	workspace := t.TempDir()
+	provider := &testIdentityProvider{response: &providers.LLMResponse{Content: `{"learning":[],"user":[]}`}}
+	input := IdentityCurateInput{Workspace: workspace, Success: true, FinalContent: "Hello."}
+	for range 2 {
+		// Factory recreation must not bypass the persisted cooldown.
+		if _, err := identityCuratorFor(t, provider, workspace).Curate(context.Background(), input); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if provider.chatCalls != 1 {
+		t.Fatalf("empty extractions bypassed cooldown: %d calls", provider.chatCalls)
 	}
 }
 

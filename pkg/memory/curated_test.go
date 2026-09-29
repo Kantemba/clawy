@@ -11,6 +11,19 @@ import (
 	"github.com/Kantemba/clawy/pkg/skills"
 )
 
+func TestCuratedStoreRequiresConfiguredWorkspace(t *testing.T) {
+	store := NewCuratedStore("")
+	if err := store.EnsureSelfImprovementSkill(); err == nil {
+		t.Fatal("unset workspace must not initialize a skill in cwd")
+	}
+	if err := store.AddEntry(TargetLearning, "Run regression tests."); err == nil {
+		t.Fatal("unset workspace must reject persistent writes")
+	}
+	if store.Path(TargetLearning) != "" {
+		t.Fatal("unset workspace resolved into cwd")
+	}
+}
+
 func TestCuratedLearningSkillLifecycle(t *testing.T) {
 	workspace := t.TempDir()
 	store := NewCuratedStore(workspace)

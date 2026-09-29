@@ -16,16 +16,24 @@ import (
 func TestApplier_CannotReplaceGeneralSelfImprovementWorkflow(t *testing.T) {
 	workspace := t.TempDir()
 	store := memory.NewCuratedStore(workspace)
-	if err := store.EnsureSelfImprovementSkill(); err != nil { t.Fatal(err) }
+	if err := store.EnsureSelfImprovementSkill(); err != nil {
+		t.Fatal(err)
+	}
 	before, err := os.ReadFile(skills.SelfImprovementSkillPath(workspace))
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	applier := evolution.NewApplier(evolution.NewPaths(workspace, ""), nil)
 	for _, name := range []string{skills.SelfImprovementSkillName, "Self-Improvement"} {
 		draft := evolution.SkillDraft{TargetSkillName: name, ChangeKind: evolution.ChangeKindReplace, BodyOrPatch: "# Replaced workflow"}
-		if err := applier.ApplyDraft(context.Background(), workspace, draft); err == nil { t.Fatal("general workflow must be protected from task-skill replacement") }
+		if err := applier.ApplyDraft(context.Background(), workspace, draft); err == nil {
+			t.Fatal("general workflow must be protected from task-skill replacement")
+		}
 	}
 	after, err := os.ReadFile(skills.SelfImprovementSkillPath(workspace))
-	if err != nil || string(after) != string(before) { t.Fatal("workflow changed") }
+	if err != nil || string(after) != string(before) {
+		t.Fatal("workflow changed")
+	}
 }
 
 func TestApplier_CreateDraftWritesSkillFile(t *testing.T) {

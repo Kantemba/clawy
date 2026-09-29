@@ -2,6 +2,7 @@ package agent
 
 import (
 	"strings"
+
 	"github.com/Kantemba/clawy/pkg/logger"
 	"github.com/Kantemba/clawy/pkg/memory"
 )
