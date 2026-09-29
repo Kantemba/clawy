@@ -8,7 +8,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Kantemba/clawy/pkg/memory"
 	"github.com/Kantemba/clawy/pkg/providers"
+	"github.com/Kantemba/clawy/pkg/skills"
 )
 
 // testIdentityProvider is a stub providers.LLMProvider that returns a canned
@@ -153,7 +155,7 @@ func TestApplyFacts_SplicesPreservingSurroundingContent(t *testing.T) {
 	}
 }
 
-func TestLLMIdentityCurator_Curate_AppliesAndWritesFiles(t *testing.T) {
+func TestLLMIdentityCurator_Curate_PersistsGeneralSkillAndUserFacts(t *testing.T) {
 	workspace := t.TempDir()
 	provider := &testIdentityProvider{
 		response: &providers.LLMResponse{
@@ -179,12 +181,15 @@ func TestLLMIdentityCurator_Curate_AppliesAndWritesFiles(t *testing.T) {
 		t.Fatalf("result = %#v", result)
 	}
 
-	soul := string(mustReadFile(t, filepath.Join(workspace, "SOUL.md")))
-	if !strings.Contains(soul, identitySectionBegin) || !strings.Contains(soul, "- Prefer native-name lookup first.") {
-		t.Fatalf("SOUL.md not written:\n%s", soul)
+	skill := string(mustReadFile(t, skills.SelfImprovementSkillPath(workspace)))
+	if !strings.Contains(skill, skills.SelfImprovementWorkflow) || !strings.Contains(skill, "§ Prefer native-name lookup first.") {
+		t.Fatalf("general skill not written:\n%s", skill)
+	}
+	if _, err := os.Stat(filepath.Join(workspace, "SOUL.md")); !os.IsNotExist(err) {
+		t.Fatal("curation must not rewrite identity")
 	}
 	user := string(mustReadFile(t, filepath.Join(workspace, "USER.md")))
-	if !strings.Contains(user, "- Prefers terse answers.") {
+	if !strings.Contains(user, "§ Prefers terse answers.") {
 		t.Fatalf("USER.md not written:\n%s", user)
 	}
 	if provider.chatCalls != 1 {
@@ -230,15 +235,18 @@ func TestLLMIdentityCurator_Curate_NoopOnFailure(t *testing.T) {
 
 func TestLLMIdentityCurator_Curate_NoopOnCooldown(t *testing.T) {
 	workspace := t.TempDir()
-	soulPath := filepath.Join(workspace, "SOUL.md")
-	mustWriteFile(t, soulPath, "# Soul\n", 0o644)
+	if err := os.MkdirAll(filepath.Join(workspace, "memory"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	stampPath := filepath.Join(workspace, "memory", ".self-improvement-curated")
+	mustWriteFile(t, stampPath, "curated", 0o600)
 
 	provider := &testIdentityProvider{
 		response: &providers.LLMResponse{Content: `{"soul":["x"],"user":[]}`},
 	}
 	curator := identityCuratorFor(t, provider, workspace)
 
-	// SOUL.md was just written -> within the 5-minute cooldown -> skip.
+	// A recent learning pass is within the five-minute cooldown.
 	result, err := curator.Curate(context.Background(), IdentityCurateInput{
 		Workspace: workspace, Success: true, FinalContent: "hi",
 	})
@@ -271,6 +279,31 @@ func TestLLMIdentityCurator_Curate_NoopWhenLLMYieldsNothing(t *testing.T) {
 	}
 	if _, statErr := os.Stat(filepath.Join(workspace, "SOUL.md")); !os.IsNotExist(statErr) {
 		t.Fatal("expected no SOUL.md written")
+	}
+}
+
+func TestLLMIdentityCurator_UsesSharedValidationAndBudget(t *testing.T) {
+	workspace := t.TempDir()
+	store := memory.NewCuratedStore(workspace)
+	if err := store.AddEntry(memory.TargetUser, strings.Repeat("x", memory.UserBudget-5)); err != nil {
+		t.Fatal(err)
+	}
+	provider := &testIdentityProvider{response: &providers.LLMResponse{
+		Content: `{"learning":["password: should-not-persist","When debugging, reproduce the issue and verify the fix."],"user":["Prefers short responses."]}`,
+	}}
+	curator := identityCuratorFor(t, provider, workspace)
+	result, err := curator.Curate(context.Background(), IdentityCurateInput{Workspace: workspace, Success: true, FinalContent: "Checked."})
+	if err == nil {
+		t.Fatal("expected secret/capacity rejection to be surfaced")
+	}
+	if !result.Updated || len(result.SoulFacts) != 1 || len(result.UserFacts) != 0 {
+		t.Fatalf("result must only report actual writes: %#v", result)
+	}
+	if got := store.ReadEntries(memory.TargetLearning); len(got) != 1 || strings.Contains(got[0], "password") {
+		t.Fatalf("invalid rules stored: %v", got)
+	}
+	if got := store.ReadEntries(memory.TargetUser); len(got) != 1 {
+		t.Fatal("curator bypassed user budget")
 	}
 }
 

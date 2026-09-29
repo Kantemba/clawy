@@ -267,17 +267,17 @@ func (b *evolutionBridge) handleTurnEndAsync(meta EventMeta, payload TurnEndPayl
 				FinalContent: input.FinalContent,
 			})
 			if curErr != nil {
-				logger.WarnCF("agent", "Online identity curation failed", map[string]any{
+				logger.WarnCF("agent", "Online self-improvement curation failed", map[string]any{
 					"workspace": input.Workspace,
 					"turn_id":   input.TurnID,
 					"error":     curErr.Error(),
 				})
 			} else if curResult.Updated {
-				logger.InfoCF("agent", "Online identity curation completed", map[string]any{
-					"workspace":  input.Workspace,
-					"turn_id":    input.TurnID,
-					"soul_facts": len(curResult.SoulFacts),
-					"user_facts": len(curResult.UserFacts),
+				logger.InfoCF("agent", "Online self-improvement curation completed", map[string]any{
+					"workspace":     input.Workspace,
+					"turn_id":       input.TurnID,
+					"learned_rules": len(curResult.SoulFacts),
+					"user_facts":    len(curResult.UserFacts),
 				})
 			}
 		}

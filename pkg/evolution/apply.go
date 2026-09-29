@@ -51,6 +51,9 @@ func (a *Applier) applyDraftWithRollback(
 	if validateErr := skills.ValidateSkillName(draft.TargetSkillName); validateErr != nil {
 		return nil, validateErr
 	}
+	if strings.EqualFold(draft.TargetSkillName, skills.SelfImprovementSkillName) {
+		return nil, fmt.Errorf("the general self-improvement workflow is protected; update its learning target through the memory store")
+	}
 
 	existingBody, backupPath, hadOriginal, err := a.backupCurrentSkill(workspace, draft.TargetSkillName)
 	if err != nil {

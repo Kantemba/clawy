@@ -188,6 +188,15 @@ func (rt *Runtime) ReviseSkillOnFailure(ctx context.Context, input TurnCaseInput
 	}
 
 	candidates := filterValidSkillNames(input.ActiveSkillNames)
+	// General working lessons are curated through bounded memory, not rewritten
+	// by the task-specific skill patcher after an unrelated task failure.
+	filtered := candidates[:0]
+	for _, name := range candidates {
+		if !strings.EqualFold(name, skills.SelfImprovementSkillName) {
+			filtered = append(filtered, name)
+		}
+	}
+	candidates = filtered
 	if len(candidates) == 0 {
 		return SkillFeedbackResult{}, nil
 	}
@@ -345,9 +354,9 @@ func ptrBool(v bool) *bool {
 	return &v
 }
 
-// CurateIdentity is the online identity-layer entry point. When evolution is
-// enabled and online identity curation is on, it persists worth-keeping agent
-// facts (into SOUL.md) and user facts (into USER.md) for a successful turn.
+// CurateIdentity is the compatibility entry point for online general learning.
+// It persists reusable rules into the self-improvement skill and explicit user
+// facts into bounded USER.md memory, never rewriting SOUL.md.
 //
 // It is a no-op when evolution/identity curation is disabled, the turn was not
 // successful, or no curator is configured (e.g. no LLM provider).

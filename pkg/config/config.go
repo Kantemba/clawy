@@ -75,11 +75,10 @@ type EvolutionConfig struct {
 	MinCaseCount int `json:"min_case_count,omitempty"`
 	// Deprecated: use MinSuccessRatio.
 	MinSuccessRate float64 `json:"min_success_rate,omitempty"`
-	// IdentityCuration enables the online identity layer: at the end of each
-	// successful turn the runtime extracts durable facts about the agent
-	// (into SOUL.md) and the user (into USER.md) and appends them, deduplicated
-	// and rate-limited by a cool-down. It is only meaningful when evolution
-	// itself is enabled.
+	// IdentityCuration retains its config key for compatibility. It extracts
+	// evidence-backed general rules into the always-loaded self-improvement
+	// skill and explicit user facts into bounded USER.md memory. It is
+	// deduplicated, rate-limited, and meaningful only when evolution is enabled.
 	IdentityCuration bool `json:"identity_curation,omitempty"`
 }
 
@@ -115,8 +114,8 @@ func (c EvolutionConfig) MarshalJSON() ([]byte, error) {
 	return json.Marshal(out)
 }
 
-// EffectiveIdentityCuration reports whether the online SOUL.md/USER.md
-// identity layer is enabled. It is only meaningful when evolution itself is
+// EffectiveIdentityCuration reports whether online general-skill/user-memory
+// curation is enabled. It is only meaningful when evolution itself is
 // enabled; otherwise it is disabled regardless of the field value.
 func (c EvolutionConfig) EffectiveIdentityCuration() bool {
 	return c.Enabled && c.IdentityCuration
@@ -1198,12 +1197,12 @@ type ExecConfig struct {
 
 	// SSH backend options: run commands on a remote host via `ssh`.
 	// Key-based auth with BatchMode is used so commands never hang on prompts.
-	SSHHost      string `json:"ssh_host,omitempty"        yaml:"ssh_host,omitempty"        env:"CLAWY_TOOLS_EXEC_SSH_HOST"`
-	SSHPort      int    `json:"ssh_port,omitempty"        yaml:"ssh_port,omitempty"        env:"CLAWY_TOOLS_EXEC_SSH_PORT"`
-	SSHUser      string `json:"ssh_user,omitempty"        yaml:"ssh_user,omitempty"        env:"CLAWY_TOOLS_EXEC_SSH_USER"`
-	SSHKeyPath   string `json:"ssh_key_path,omitempty"    yaml:"ssh_key_path,omitempty"    env:"CLAWY_TOOLS_EXEC_SSH_KEY_PATH"`
-	SSHShell     string `json:"ssh_shell,omitempty"       yaml:"ssh_shell,omitempty"       env:"CLAWY_TOOLS_EXEC_SSH_SHELL"` // default: sh
-	SSHStrictHostKey bool `json:"-"                                       yaml:"-"` // reserved
+	SSHHost          string `json:"ssh_host,omitempty"        yaml:"ssh_host,omitempty"        env:"CLAWY_TOOLS_EXEC_SSH_HOST"`
+	SSHPort          int    `json:"ssh_port,omitempty"        yaml:"ssh_port,omitempty"        env:"CLAWY_TOOLS_EXEC_SSH_PORT"`
+	SSHUser          string `json:"ssh_user,omitempty"        yaml:"ssh_user,omitempty"        env:"CLAWY_TOOLS_EXEC_SSH_USER"`
+	SSHKeyPath       string `json:"ssh_key_path,omitempty"    yaml:"ssh_key_path,omitempty"    env:"CLAWY_TOOLS_EXEC_SSH_KEY_PATH"`
+	SSHShell         string `json:"ssh_shell,omitempty"       yaml:"ssh_shell,omitempty"       env:"CLAWY_TOOLS_EXEC_SSH_SHELL"` // default: sh
+	SSHStrictHostKey bool   `json:"-"                                       yaml:"-"`                                            // reserved
 }
 
 type SkillsToolsConfig struct {
@@ -1270,19 +1269,19 @@ type ToolsConfig struct {
 	LoadImage       ToolConfig         `json:"load_image"        yaml:"-"                                                       envPrefix:"CLAWY_TOOLS_LOAD_IMAGE_"`
 	Message         MessageToolsConfig `json:"message"           yaml:"-"`
 	// Memory gates the Hermes-style curated memory tool (MEMORY.md/USER.md).
-	Memory          ToolConfig         `json:"memory"            yaml:"-"                                                       envPrefix:"CLAWY_TOOLS_MEMORY_"`
-	ReadFile    ReadFileToolConfig `json:"read_file"         yaml:"-"                                                       envPrefix:"CLAWY_TOOLS_READ_FILE_"`
-	Serial          ToolConfig         `json:"serial"            yaml:"-"                                                       envPrefix:"CLAWY_TOOLS_SERIAL_"`
-	SendFile        ToolConfig         `json:"send_file"         yaml:"-"                                                       envPrefix:"CLAWY_TOOLS_SEND_FILE_"`
-	SendTTS         ToolConfig         `json:"send_tts"          yaml:"-"                                                       envPrefix:"CLAWY_TOOLS_SEND_TTS_"`
+	Memory   ToolConfig         `json:"memory"            yaml:"-"                                                       envPrefix:"CLAWY_TOOLS_MEMORY_"`
+	ReadFile ReadFileToolConfig `json:"read_file"         yaml:"-"                                                       envPrefix:"CLAWY_TOOLS_READ_FILE_"`
+	Serial   ToolConfig         `json:"serial"            yaml:"-"                                                       envPrefix:"CLAWY_TOOLS_SERIAL_"`
+	SendFile ToolConfig         `json:"send_file"         yaml:"-"                                                       envPrefix:"CLAWY_TOOLS_SEND_FILE_"`
+	SendTTS  ToolConfig         `json:"send_tts"          yaml:"-"                                                       envPrefix:"CLAWY_TOOLS_SEND_TTS_"`
 	// SessionSearch gates BM25 recall over past conversation sessions.
-	SessionSearch   ToolConfig         `json:"session_search"    yaml:"-"                                                       envPrefix:"CLAWY_TOOLS_SESSION_SEARCH_"`
-	Spawn           ToolConfig         `json:"spawn"             yaml:"-"                                                       envPrefix:"CLAWY_TOOLS_SPAWN_"`
-	SpawnStatus     ToolConfig         `json:"spawn_status"      yaml:"-"                                                       envPrefix:"CLAWY_TOOLS_SPAWN_STATUS_"`
-	SPI             ToolConfig         `json:"spi"               yaml:"-"                                                       envPrefix:"CLAWY_TOOLS_SPI_"`
-	Subagent        ToolConfig         `json:"subagent"          yaml:"-"                                                       envPrefix:"CLAWY_TOOLS_SUBAGENT_"`
-	WebFetch        ToolConfig         `json:"web_fetch"         yaml:"-"                                                       envPrefix:"CLAWY_TOOLS_WEB_FETCH_"`
-	WriteFile       ToolConfig         `json:"write_file"        yaml:"-"                                                       envPrefix:"CLAWY_TOOLS_WRITE_FILE_"`
+	SessionSearch ToolConfig `json:"session_search"    yaml:"-"                                                       envPrefix:"CLAWY_TOOLS_SESSION_SEARCH_"`
+	Spawn         ToolConfig `json:"spawn"             yaml:"-"                                                       envPrefix:"CLAWY_TOOLS_SPAWN_"`
+	SpawnStatus   ToolConfig `json:"spawn_status"      yaml:"-"                                                       envPrefix:"CLAWY_TOOLS_SPAWN_STATUS_"`
+	SPI           ToolConfig `json:"spi"               yaml:"-"                                                       envPrefix:"CLAWY_TOOLS_SPI_"`
+	Subagent      ToolConfig `json:"subagent"          yaml:"-"                                                       envPrefix:"CLAWY_TOOLS_SUBAGENT_"`
+	WebFetch      ToolConfig `json:"web_fetch"         yaml:"-"                                                       envPrefix:"CLAWY_TOOLS_WEB_FETCH_"`
+	WriteFile     ToolConfig `json:"write_file"        yaml:"-"                                                       envPrefix:"CLAWY_TOOLS_WRITE_FILE_"`
 }
 
 // IsFilterSensitiveDataEnabled returns true if sensitive data filtering is enabled

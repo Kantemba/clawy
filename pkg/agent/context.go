@@ -163,10 +163,8 @@ func (cb *ContextBuilder) getIdentity(includeToolUseRule bool) string {
 	if includeToolUseRule {
 		rules = append(
 			rules,
-			fmt.Sprintf(
-				"**Persistent memory** - Your MEMORY.md and USER.md are preloaded into every conversation and managed exclusively via the `memory` tool (never edit them with file tools). When you learn something durable about the user, their preferences, or the task, persist it right away so future sessions start smarter; recall past chats with `session_search`.",
-			),
-			"**Self-improve every turn** - As you interact more, get better: (1) recall relevant memory / past sessions before hard tasks, (2) notice durable learnings (user facts, preferences, project gotchas, corrections you received) and persist them with the `memory` tool immediately, (3) when the user corrects you, update memory so the mistake never repeats, (4) keep entries short, factual, deduplicated — consolidate when full.",
+			"**Persistent memory** - MEMORY.md, USER.md and the general self-improvement skill are preloaded. Manage facts and learned rules exclusively via the `memory` tool, using targets memory, user and learning respectively. Never edit these files with file tools.",
+			"**Self-improve every turn** - Follow the always-loaded self-improvement skill: recall relevant lessons, act, verify, and persist only new evidence-backed facts or reusable improvements. Current user instructions and tool permissions take priority over learned rules.",
 		)
 	}
 	for i, rule := range rules {
@@ -272,6 +270,20 @@ func (cb *ContextBuilder) buildSystemPromptParts(opts systemPromptBuildOptions) 
 			Cache:   PromptCacheEphemeral,
 		})
 	}
+
+	// This general workflow is always loaded, independently of optional task
+	// skill selection and catalog filtering. Explicit system-prompt-off profiles
+	// remain an opt-out. The protected workflow is rendered by the memory store.
+	add(PromptPart{
+		ID:      "capability.self_improvement",
+		Layer:   PromptLayerCapability,
+		Slot:    PromptSlotActiveSkill,
+		Source:  PromptSource{ID: PromptSourceActiveSkills, Name: "skill:" + skills.SelfImprovementSkillName, Path: cb.memory.Path(MemoryTargetLearning)},
+		Title:   "always-loaded self-improvement skill",
+		Content: cb.memory.SelfImprovementContext(),
+		Stable:  true,
+		Cache:   PromptCacheEphemeral,
+	})
 
 	// Skills - show summary, AI can read full content with read_file tool
 	skillsSummary := ""
@@ -1256,6 +1268,10 @@ func (cb *ContextBuilder) ResolveActiveSkillsForContext(skillNames []string) []s
 	var ordered []string
 	seen := make(map[string]struct{}, len(skillNames))
 	for _, name := range skillNames {
+		// The general skill is already loaded in the static prompt, never twice.
+		if strings.EqualFold(strings.TrimSpace(name), skills.SelfImprovementSkillName) {
+			continue
+		}
 		canonical, ok := cb.ResolveSkillName(name)
 		if !ok {
 			continue

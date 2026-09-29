@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/Kantemba/clawy/pkg/agent"
+	"github.com/Kantemba/clawy/pkg/skills"
 	"github.com/Kantemba/clawy/pkg/tools"
 )
 
@@ -83,6 +84,38 @@ func TestMemoryToolValidationAndLifecycle(t *testing.T) {
 	}
 }
 
+func TestMemoryToolLearningUpdatesAlwaysLoadedSkill(t *testing.T) {
+	workspace := t.TempDir()
+	tool := tools.NewMemoryTool(agent.NewMemoryStore(workspace))
+	lesson := "When changing a public API, add a compatibility test and run it."
+	result := tool.Execute(context.Background(), map[string]any{
+		"action": "add", "target": "learning", "text": lesson,
+	})
+	if result.IsError {
+		t.Fatal(result.ForLLM)
+	}
+	data, err := os.ReadFile(skills.SelfImprovementSkillPath(workspace))
+	if err != nil || !strings.Contains(string(data), "§ "+lesson) {
+		t.Fatalf("lesson not persisted: %v", err)
+	}
+	prompt := agent.NewContextBuilder(workspace).BuildSystemPrompt()
+	if !strings.Contains(prompt, lesson) {
+		t.Fatal("lesson missing from next turn's prompt")
+	}
+}
+
+func TestMemoryToolReportsReadFailure(t *testing.T) {
+	workspace := t.TempDir()
+	store := agent.NewMemoryStore(workspace)
+	if err := os.Mkdir(store.Path("user"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	result := tools.NewMemoryTool(store).Execute(context.Background(), map[string]any{"action": "read", "target": "user"})
+	if !result.IsError {
+		t.Fatalf("read failure was reported as empty: %s", result.ForLLM)
+	}
+}
+
 func TestMemoryToolSurfacesConsolidationErrors(t *testing.T) {
 	tool, _ := memoryToolHarness(t)
 	ctx := context.Background()
@@ -93,4 +126,3 @@ func TestMemoryToolSurfacesConsolidationErrors(t *testing.T) {
 		t.Fatalf("capacity error should surface consolidation guidance: %q", res.ForLLM)
 	}
 }
-

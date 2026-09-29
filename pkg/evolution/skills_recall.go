@@ -47,7 +47,12 @@ func (r *SkillsRecaller) RecallSimilarSkills(rule LearningRecord) ([]skills.Skil
 		return nil, nil
 	}
 
-	all := r.loader.ListSkills()
+	var all []skills.SkillInfo
+	for _, skill := range r.loader.ListSkills() {
+		if !strings.EqualFold(skill.Name, skills.SelfImprovementSkillName) {
+			all = append(all, skill)
+		}
+	}
 	if names := explicitRecallSkillNames(rule); len(names) > 0 {
 		return filterSkillsByExplicitNames(all, names), nil
 	}
