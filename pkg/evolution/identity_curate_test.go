@@ -51,20 +51,6 @@ func identityCuratorFor(t *testing.T, provider providers.LLMProvider, workspace 
 	return r
 }
 
-func writeTestIdentityFile(t *testing.T, workspace, name, content string) string {
-	t.Helper()
-	path := filepath.Join(workspace, name)
-	if err := os.MkdirAll(workspace, 0o755); err != nil {
-		t.Fatalf("mkdir %s: %v", workspace, err)
-	}
-	if content != "" {
-		if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
-			t.Fatalf("write %s: %v", path, err)
-		}
-	}
-	return path
-}
-
 func TestParseIdentityFacts_ParsesCleanJSON(t *testing.T) {
 	facts, ok := parseIdentityFacts(`{"soul":["Stay precise.","Prefer native-name lookup."],"user":["Prefers terse answers."]}`)
 	if !ok {
@@ -94,65 +80,29 @@ func TestParseIdentityFacts_RejectsGarbage(t *testing.T) {
 	}
 }
 
-func TestApplyFacts_AppendsToNewFile(t *testing.T) {
-	out, changed := applyFacts("", []string{"Stay precise.", "Be terse."}, 3)
-	if !changed {
-		t.Fatal("expected changed=true")
-	}
-	if !strings.Contains(out, identitySectionBegin) || !strings.Contains(out, identitySectionEnd) {
-		t.Fatalf("missing section markers:\n%s", out)
-	}
-	if !strings.Contains(out, "- Stay precise.\n") || !strings.Contains(out, "- Be terse.") {
-		t.Fatalf("missing bullets:\n%s", out)
-	}
+func TestLLMIdentityCuratorDeduplicatesAndPreservesExistingMemory(t *testing.T) {
+	workspace := t.TempDir()
+	store := memory.NewCuratedStore(workspace)
+	if err := store.AddEntry(memory.TargetLearning, "When debugging, reproduce the problem first."); err != nil { t.Fatal(err) }
+	if err := os.WriteFile(store.Path(memory.TargetUser), []byte("# User\nWorks on embedded devices.\n"), 0o600); err != nil { t.Fatal(err) }
+	provider := &testIdentityProvider{response: &providers.LLMResponse{
+		Content: `{"learning":["When debugging, reproduce the problem first.","When changing APIs, run compatibility tests."],"user":["Prefers concise answers."]}`,
+	}}
+	curator := identityCuratorFor(t, provider, workspace)
+	result, err := curator.Curate(context.Background(), IdentityCurateInput{Workspace: workspace, Success: true, FinalContent: "Checked."})
+	if err != nil { t.Fatal(err) }
+	if len(result.SoulFacts) != 1 || len(store.ReadEntries(memory.TargetLearning)) != 2 { t.Fatalf("duplicate rule persisted: %#v", result) }
+	if got := store.ReadEntries(memory.TargetUser); len(got) != 2 || !strings.Contains(got[0], "embedded devices") { t.Fatalf("legacy facts lost: %v", got) }
 }
 
-func TestApplyFacts_DedupsExactRepeat(t *testing.T) {
-	existing := "# Soul\n" + identitySectionBegin + "\n- Stay precise.\n" + identitySectionEnd + "\n"
-	out, changed := applyFacts(existing, []string{"Stay precise.", "Be terse."}, 3)
-	if !changed {
-		t.Fatal("expected the non-duplicate fact to change the file")
-	}
-	// "Stay precise." already present -> skipped; "Be terse." appended.
-	before := strings.Count(out, "- Stay precise.")
-	if before != 1 {
-		t.Fatalf("expected exactly one copy of the duplicate fact, got %d", before)
-	}
-	if !strings.Contains(out, "- Be terse.") {
-		t.Fatalf("new fact not appended:\n%s", out)
-	}
-}
-
-func TestApplyFacts_DedupsSuperset(t *testing.T) {
-	existing := identitySectionBegin + "\n- Be helpful.\n" + identitySectionEnd + "\n"
-	_, changed := applyFacts(existing, []string{"Be helpful and kind."}, 3)
-	if changed {
-		t.Fatal("expected superset of an existing fact to be treated as a duplicate")
-	}
-}
-
-func TestApplyFacts_CapsAtMax(t *testing.T) {
-	newFacts := []string{"a", "b", "c", "d", "e"}
-	_, changed := applyFacts("", newFacts, 2)
-	if !changed {
-		t.Fatal("expected changed=true")
-	}
-}
-
-func TestApplyFacts_SplicesPreservingSurroundingContent(t *testing.T) {
-	original := "# Soul\n\nStay sharp.\n\n" +
-		identitySectionBegin + "\n- old fact\n" + identitySectionEnd + "\n\n" +
-		"## Notes\nSee below.\n"
-	out, changed := applyFacts(original, []string{"new fact"}, 3)
-	if !changed {
-		t.Fatal("expected changed=true")
-	}
-	if !strings.Contains(out, "Stay sharp.") || !strings.Contains(out, "## Notes\nSee below.") {
-		t.Fatalf("surrounding content lost:\n%s", out)
-	}
-	if !strings.Contains(out, "- old fact\n") || !strings.Contains(out, "- new fact\n") {
-		t.Fatalf("facts not merged correctly:\n%s", out)
-	}
+func TestLLMIdentityCuratorCapsEntriesPerTurn(t *testing.T) {
+	workspace := t.TempDir()
+	provider := &testIdentityProvider{response: &providers.LLMResponse{
+		Content: `{"learning":["Rule alpha.","Rule beta.","Rule gamma.","Rule delta."],"user":[]}`,
+	}}
+	result, err := identityCuratorFor(t, provider, workspace).Curate(context.Background(), IdentityCurateInput{Workspace: workspace, Success: true, FinalContent: "Checked."})
+	if err != nil { t.Fatal(err) }
+	if len(result.SoulFacts) != maxFactsPerTurn { t.Fatalf("unbounded additions: %#v", result) }
 }
 
 func TestLLMIdentityCurator_Curate_PersistsGeneralSkillAndUserFacts(t *testing.T) {
