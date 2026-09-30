@@ -60,7 +60,7 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
-          cache-dependency-path: web/frontend/pnpm-lock.yaml
+          cache-dependency-path: clients/web/frontend/pnpm-lock.yaml
 
       # 3. Build the application bundle (VERSION feeds both the binaries'
       #    ldflags and the Info.plist bundle version)

@@ -15,6 +15,7 @@ import (
 	"github.com/Kantemba/clawy/pkg/agent"
 	"github.com/Kantemba/clawy/pkg/bus"
 	"github.com/Kantemba/clawy/pkg/logger"
+	"github.com/Kantemba/clawy/pkg/plugins"
 	"github.com/Kantemba/clawy/pkg/providers"
 )
 
@@ -27,6 +28,10 @@ func agentCmd(message, sessionKey, model string, debug bool) error {
 	if err != nil {
 		return fmt.Errorf("error loading config: %w", err)
 	}
+
+	// Discover plugins exactly like the gateway does, so interactive/direct
+	// mode exposes the same plugin skills, slash commands and MCP servers.
+	plugins.Bootstrap(cfg)
 
 	logger.ConfigureFromEnv()
 

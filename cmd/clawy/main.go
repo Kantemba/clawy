@@ -27,6 +27,7 @@ import (
 	"github.com/Kantemba/clawy/cmd/clawy/internal/model"
 	"github.com/Kantemba/clawy/cmd/clawy/internal/onboard"
 	pairingcmd "github.com/Kantemba/clawy/cmd/clawy/internal/pairing"
+	plugincmd "github.com/Kantemba/clawy/cmd/clawy/internal/plugin"
 	"github.com/Kantemba/clawy/cmd/clawy/internal/skills"
 	"github.com/Kantemba/clawy/cmd/clawy/internal/status"
 	"github.com/Kantemba/clawy/cmd/clawy/internal/version"
@@ -137,6 +138,7 @@ clawy --no-color status`,
 		status.NewStatusCommand(),
 		cron.NewCronCommand(),
 		mcp.NewMCPCommand(),
+		plugincmd.NewPluginCommand(),
 		migrate.NewMigrateCommand(),
 		skills.NewSkillsCommand(),
 		model.NewModelCommand(),

@@ -41,6 +41,12 @@ const (
 	// EnvGatewayHost overrides the host address for the gateway server.
 	// Default: "localhost"
 	EnvGatewayHost = "CLAWY_GATEWAY_HOST"
+
+	// EnvPlugins lists extra plugin search directories (os.PathListSeparator
+	// separated, e.g. "/opt/plugins:/home/me/plugins"). These are scanned in
+	// addition to the config `plugins.dirs` entries and the built-in
+	// <workspace>/plugins and ~/.clawy/plugins roots.
+	EnvPlugins = "CLAWY_PLUGINS"
 )
 
 func GetHome() string {

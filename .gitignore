@@ -56,17 +56,17 @@ dist/
 # Windows Application Icon/Resource
 *.syso
 .cache/
-web/frontend/.pnpm-store/
+clients/web/frontend/.pnpm-store/
 _tmp_*
-web/frontend/_tmp_*
+clients/web/frontend/_tmp_*
 
 # Test telegram integration
 cmd/telegram/
 
 # Keep embedded backend dist directory placeholder in VCS
-!web/backend/dist/
-web/backend/dist/*
-!web/backend/dist/.gitkeep
+!clients/web/backend/dist/
+clients/web/backend/dist/*
+!clients/web/backend/dist/.gitkeep
 
 .claude/
 

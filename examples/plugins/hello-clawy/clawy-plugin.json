@@ -1,0 +1,10 @@
+{
+  "name": "hello-clawy",
+  "version": "0.1.0",
+  "description": "Minimal Clawy plugin: one skill, one slash command",
+  "author": "clawy",
+  "keywords": ["example", "starter"],
+  "license": "MIT",
+  "skills": "./skills/",
+  "commands": "./commands/"
+}

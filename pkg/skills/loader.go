@@ -58,11 +58,14 @@ func (info SkillInfo) validate() error {
 	return errs
 }
 // Source resolution priority: lower wins when two roots expose a skill with
-// the same name.
+// the same name. Plugin roots sit between the user's global skills and the
+// builtin fallbacks: a plugin ships curated skills but must never shadow a
+// skill the user installed by hand.
 var sourcePriority = map[string]int{
 	"workspace": 0,
 	"global":    1,
-	"builtin":   2,
+	"plugin":    2,
+	"builtin":   3,
 }
 
 type SkillsLoader struct {
@@ -73,9 +76,12 @@ type SkillsLoader struct {
 }
 
 // SkillRoots returns all unique skill root directories used by this loader.
-// The order follows resolution priority: workspace > global > builtin.
+// The order follows resolution priority: workspace > global > plugin > builtin.
 func (sl *SkillsLoader) SkillRoots() []string {
-	roots := []string{sl.workspaceSkills, sl.globalSkills, sl.builtinSkills}
+	roots := []string{sl.workspaceSkills, sl.globalSkills}
+	roots = append(roots, PluginSkillRoots()...)
+	roots = append(roots, sl.builtinSkills)
+
 	seen := make(map[string]struct{}, len(roots))
 	out := make([]string, 0, len(roots))
 
@@ -152,10 +158,10 @@ func (sl *SkillsLoader) ListSkills() []SkillInfo {
 		}
 	}
 
-	// Priority: workspace > global > builtin
-	addSkills(sl.workspaceSkills, "workspace")
-	addSkills(sl.globalSkills, "global")
-	addSkills(sl.builtinSkills, "builtin")
+	// Priority: workspace > global > plugin > builtin
+	for _, root := range sl.SkillRoots() {
+		addSkills(root, sl.sourceForRoot(root))
+	}
 
 	sort.SliceStable(found, func(i, j int) bool {
 		if found[i].prio != found[j].prio {
@@ -171,30 +177,32 @@ func (sl *SkillsLoader) ListSkills() []SkillInfo {
 	return skills
 }
 
+// sourceForRoot labels a root with its source name for the skill catalog.
+// Roots that match one of the loader's fixed roots keep their label;
+// everything else comes from the plugin loader.
+func (sl *SkillsLoader) sourceForRoot(root string) string {
+	cleaned := filepath.Clean(root)
+	switch cleaned {
+	case filepath.Clean(sl.workspaceSkills):
+		return "workspace"
+	case filepath.Clean(sl.globalSkills):
+		return "global"
+	case filepath.Clean(sl.builtinSkills):
+		return "builtin"
+	default:
+		return "plugin"
+	}
+}
+
 func (sl *SkillsLoader) LoadSkill(name string) (string, bool) {
 	if err := ValidateSkillName(name); err != nil {
 		return "", false
 	}
 
-	// 1. load from workspace skills first (project-level)
-	if sl.workspaceSkills != "" {
-		skillFile := filepath.Join(sl.workspaceSkills, name, "SKILL.md")
-		if content, err := os.ReadFile(skillFile); err == nil {
-			return sl.stripFrontmatter(string(content)), true
-		}
-	}
-
-	// 2. then load from global skills (~/.clawy/skills)
-	if sl.globalSkills != "" {
-		skillFile := filepath.Join(sl.globalSkills, name, "SKILL.md")
-		if content, err := os.ReadFile(skillFile); err == nil {
-			return sl.stripFrontmatter(string(content)), true
-		}
-	}
-
-	// 3. finally load from builtin skills
-	if sl.builtinSkills != "" {
-		skillFile := filepath.Join(sl.builtinSkills, name, "SKILL.md")
+	// Roots are already deduplicated and ordered by resolution priority
+	// (workspace > global > plugin > builtin), so the first hit wins.
+	for _, root := range sl.SkillRoots() {
+		skillFile := filepath.Join(root, name, "SKILL.md")
 		if content, err := os.ReadFile(skillFile); err == nil {
 			return sl.stripFrontmatter(string(content)), true
 		}

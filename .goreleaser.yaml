@@ -10,8 +10,8 @@ git:
 before:
   hooks:
     - go generate ./...
-    - sh -c 'cd web/frontend && CI=true pnpm install --frozen-lockfile && pnpm build:backend'
-    - sh -c 'GOBIN="$(go env GOPATH)/bin"; mkdir -p "$GOBIN"; go install github.com/tc-hib/go-winres@v0.3.3 && "$GOBIN/go-winres" make --in web/backend/winres/winres.json --out web/backend/rsrc --product-version={{ .Version }} --file-version={{ .Version }}'
+    - sh -c 'cd clients/web/frontend && CI=true pnpm install --frozen-lockfile && pnpm build:backend'
+    - sh -c 'GOBIN="$(go env GOPATH)/bin"; mkdir -p "$GOBIN"; go install github.com/tc-hib/go-winres@v0.3.3 && "$GOBIN/go-winres" make --in clients/web/backend/winres/winres.json --out web/backend/rsrc --product-version={{ .Version }} --file-version={{ .Version }}'
     - sh -c 'if [ "${INCLUDE_ANDROID_BUNDLE:-}" = "true" ]; then make build-android-bundle; fi'
 
 builds:
@@ -89,7 +89,7 @@ builds:
       - "7"
     gomips:
       - softfloat
-    main: ./web/backend
+    main: ./clients/web/backend
     ignore:
       - goos: windows
         goarch: arm
@@ -197,9 +197,9 @@ nfpms:
       - deb
     bindir: /usr/bin
     contents:
-      - src: web/clawy-launcher.desktop
+      - src: clients/web/clawy-launcher.desktop
         dst: /usr/share/applications/clawy-launcher.desktop
-      - src: web/clawy-launcher.png
+      - src: clients/web/clawy-launcher.png
         dst: /usr/share/icons/hicolor/512x512/apps/clawy-launcher.png
 
 changelog:

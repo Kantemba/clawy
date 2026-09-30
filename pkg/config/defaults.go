@@ -81,6 +81,13 @@ func DefaultConfig() *Config {
 				ApprovalTimeoutMS:    60000,
 			},
 		},
+		// Plugins are discovered from <workspace>/plugins and ~/.clawy/plugins
+		// (plus plugins.dirs). Both roots are empty by default, so enabling the
+		// loader costs a few stat() calls and no behavior change until a plugin
+		// directory actually exists.
+		Plugins: PluginsConfig{
+			Enabled: true,
+		},
 		ModelList: []*ModelConfig{
 			// ============================================
 			// Add your API key to the model you want to use

@@ -25,6 +25,7 @@ import (
 	runtimeevents "github.com/Kantemba/clawy/pkg/events"
 	"github.com/Kantemba/clawy/pkg/logger"
 	"github.com/Kantemba/clawy/pkg/media"
+	"github.com/Kantemba/clawy/pkg/plugins"
 	"github.com/Kantemba/clawy/pkg/providers"
 	"github.com/Kantemba/clawy/pkg/routing"
 	"github.com/Kantemba/clawy/pkg/session"
@@ -465,6 +466,9 @@ func (al *AgentLoop) ReloadProviderAndConfig(
 	oldMCPManager := al.mcp.reset()
 	al.hookRuntime.reset(al)
 	configureHookManagerFromConfig(al.hooks, cfg)
+	// The reloaded config may enable/disable plugins; refresh the plugin
+	// slash commands so they track the active bundle.
+	al.cmdRegistry.SetExtras(plugins.Active().CommandDefinitions())
 	if err := al.ensureHooksInitialized(ctx); err != nil {
 		logger.WarnCF("agent", "Configured hooks failed to reinitialize after reload",
 			map[string]any{"error": err.Error()})

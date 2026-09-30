@@ -44,6 +44,7 @@ type Config struct {
 	Gateway   GatewayConfig   `json:"gateway"             yaml:"-"`
 	Events    EventsConfig    `json:"events,omitempty"    yaml:"-"`
 	Hooks     HooksConfig     `json:"hooks,omitempty"     yaml:"-"`
+	Plugins   PluginsConfig   `json:"plugins,omitempty"   yaml:"-"`
 	Tools     ToolsConfig     `json:"tools"               yaml:",inline"`
 	Heartbeat HeartbeatConfig `json:"heartbeat"           yaml:"-"`
 	Devices   DevicesConfig   `json:"devices"             yaml:"-"`
@@ -247,6 +248,36 @@ type HooksConfig struct {
 	Defaults  HookDefaultsConfig           `json:"defaults,omitempty"`
 	Builtins  map[string]BuiltinHookConfig `json:"builtins,omitempty"`
 	Processes map[string]ProcessHookConfig `json:"processes,omitempty"`
+}
+
+// PluginsConfig controls the directory-based plugin system.
+//
+// Plugins are plain directories that carry a manifest (see pkg/plugins):
+// either the Codex-compatible `.codex-plugin/plugin.json` layout used by
+// https://github.com/openai/plugins, or Clawy's native `clawy-plugin.json`.
+// A plugin can contribute skills, slash commands, MCP servers and hooks
+// without rebuilding Clawy.
+type PluginsConfig struct {
+	// Enabled toggles plugin discovery entirely. Default: true.
+	Enabled bool `json:"enabled"`
+	// Dirs lists extra plugin search directories on top of the built-in
+	// roots (<workspace>/plugins and ~/.clawy/plugins). Entries may use "~".
+	Dirs []string `json:"dirs,omitempty"`
+	// Disable lists plugin names that must not be loaded even when found.
+	Disable []string `json:"disable,omitempty"`
+}
+
+// EffectiveDisabled returns the set of plugin names listed in Disable.
+func (c PluginsConfig) EffectiveDisabled() map[string]struct{} {
+	disabled := make(map[string]struct{}, len(c.Disable))
+	for _, name := range c.Disable {
+		name = strings.TrimSpace(name)
+		if name == "" {
+			continue
+		}
+		disabled[strings.ToLower(name)] = struct{}{}
+	}
+	return disabled
 }
 
 type HookDefaultsConfig struct {

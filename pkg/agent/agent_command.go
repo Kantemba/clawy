@@ -32,6 +32,12 @@ func (al *AgentLoop) handleCommand(
 		return reply, handled
 	}
 
+	// Plugin prompt commands (commands/*.md) rewrite the pending message so the
+	// expanded prompt flows through the LLM instead of being answered directly.
+	if al.expandPromptCommand(msg.Content, opts) {
+		return "", false
+	}
+
 	if al.cmdRegistry == nil {
 		return "", false
 	}
@@ -63,6 +69,38 @@ func (al *AgentLoop) handleCommand(
 	default: // OutcomePassthrough — let the message fall through to LLM
 		return "", false
 	}
+}
+
+// expandPromptCommand rewrites the pending user message when the slash command
+// is a plugin prompt command (Definition.Prompt). Like
+// applyExplicitSkillCommand it reports "matched but not handled" so the
+// rewritten message continues through the normal LLM path.
+func (al *AgentLoop) expandPromptCommand(raw string, opts *processOptions) bool {
+	if al.cmdRegistry == nil || opts == nil {
+		return false
+	}
+
+	name, ok := commands.CommandName(raw)
+	if !ok {
+		return false
+	}
+	def, found := al.cmdRegistry.Lookup(name)
+	if !found || def.Prompt == "" {
+		return false
+	}
+
+	args := ""
+	if parts := strings.Fields(strings.TrimSpace(raw)); len(parts) > 1 {
+		args = strings.TrimSpace(strings.Join(parts[1:], " "))
+	}
+	prompt := def.ExpandPrompt(args)
+	if prompt == "" {
+		return false
+	}
+
+	opts.Dispatch.UserMessage = prompt
+	opts.UserMessage = prompt
+	return true
 }
 
 func (al *AgentLoop) applyExplicitSkillCommand(

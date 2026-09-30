@@ -226,11 +226,11 @@ build-launcher:
 	@echo "Building clawy-launcher for $(PLATFORM)/$(ARCH)..."
 ifeq ($(OS),Windows_NT)
 	@$(POWERSHELL) "New-Item -ItemType Directory -Force -Path '$(BUILD_DIR)' | Out-Null"
-	@$(MAKE) -C web build PLATFORM="$(PLATFORM)" ARCH="$(ARCH)" EXT="$(EXT)" OUTPUT="$(CURDIR)/$(BUILD_DIR)/clawy-launcher-$(PLATFORM)-$(ARCH)$(EXT)" GO_BUILD_TAGS="$(GO_BUILD_TAGS)"
+	@$(MAKE) -C clients/web build PLATFORM="$(PLATFORM)" ARCH="$(ARCH)" EXT="$(EXT)" OUTPUT="$(CURDIR)/$(BUILD_DIR)/clawy-launcher-$(PLATFORM)-$(ARCH)$(EXT)" GO_BUILD_TAGS="$(GO_BUILD_TAGS)"
 	@$(POWERSHELL) "Copy-Item -LiteralPath '$(BUILD_DIR)/clawy-launcher-$(PLATFORM)-$(ARCH)$(EXT)' -Destination '$(BUILD_DIR)/clawy-launcher$(EXT)' -Force"
 else
 	@mkdir -p $(BUILD_DIR)
-	@GOOS=$(PLATFORM) GOARCH=$(ARCH) $(MAKE) -C web build \
+	@GOOS=$(PLATFORM) GOARCH=$(ARCH) $(MAKE) -C clients/web build \
 		OUTPUT="$(CURDIR)/$(BUILD_DIR)/clawy-launcher-$(PLATFORM)-$(ARCH)$(EXT)" \
 		WEB_GO='$(WEB_GO)' \
 		GO_BUILD_TAGS='$(GO_BUILD_TAGS)' \
@@ -240,7 +240,7 @@ endif
 	@echo "Build complete: $(BUILD_DIR)/clawy-launcher$(EXT)"
 
 build-launcher-frontend:
-	@$(MAKE) -C web build-frontend
+	@$(MAKE) -C clients/web build-frontend
 
 ## build-whatsapp-native: Build with WhatsApp native (whatsmeow) support; larger binary
 build-whatsapp-native: generate
@@ -293,7 +293,7 @@ build-android-arm64: generate
 build-launcher-android-arm64:
 	@echo "Building clawy-launcher for android/arm64..."
 	@mkdir -p $(BUILD_DIR)
-	@$(MAKE) -C web build-android-arm64 \
+	@$(MAKE) -C clients/web build-android-arm64 \
 		OUTPUT_ANDROID_ARM64="$(CURDIR)/$(BUILD_DIR)/clawy-launcher-android-arm64" \
 		GO='$(GO)' \
 		LDFLAGS='$(LDFLAGS)'
@@ -377,13 +377,13 @@ endif
 ## vet: Run go vet for static analysis
 vet: generate
 	@packages="$$($(GO) list $(GOFLAGS) ./...)" && \
-		$(GO) vet $(GOFLAGS) $$(printf '%s\n' "$$packages" | grep -v '^github.com/Kantemba/clawy/web/')
-	@cd web/backend && $(WEB_GO) vet ./...
+		$(GO) vet $(GOFLAGS) $$(printf '%s\n' "$$packages" | grep -v '^github.com/Kantemba/clawy/clients/web/')
+	@cd clients/web/backend && $(WEB_GO) vet ./...
 
 ## test: Test Go code
 test: generate
-	@$(GO) test $(GOFLAGS) $$($(GO) list $(GOFLAGS) ./... | grep -v github.com/Kantemba/clawy/web/)
-	@cd web && make test
+	@$(GO) test $(GOFLAGS) $$($(GO) list $(GOFLAGS) ./... | grep -v github.com/Kantemba/clawy/clients/web/)
+	@cd clients/web && make test
 
 ## integration-test: Run Docker-backed integration test suites
 integration-test:

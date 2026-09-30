@@ -88,7 +88,7 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
-          cache-dependency-path: web/frontend/pnpm-lock.yaml
+          cache-dependency-path: clients/web/frontend/pnpm-lock.yaml
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v4

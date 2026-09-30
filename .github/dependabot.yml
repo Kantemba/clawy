@@ -13,7 +13,7 @@ updates:
 
   # Frontend dependencies
   - package-ecosystem: "npm"
-    directory: "/web/frontend"
+    directory: "/clients/web/frontend"
     schedule:
       interval: "weekly"
     labels:

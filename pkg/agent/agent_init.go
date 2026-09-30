@@ -16,6 +16,7 @@ import (
 	"github.com/Kantemba/clawy/pkg/config"
 	runtimeevents "github.com/Kantemba/clawy/pkg/events"
 	"github.com/Kantemba/clawy/pkg/logger"
+	"github.com/Kantemba/clawy/pkg/plugins"
 	"github.com/Kantemba/clawy/pkg/providers"
 	"github.com/Kantemba/clawy/pkg/skills"
 	"github.com/Kantemba/clawy/pkg/state"
@@ -98,6 +99,10 @@ func NewAgentLoop(
 	al.hooks = NewHookManager(al.runtimeEvents.Channel())
 	configureHookManagerFromConfig(al.hooks, cfg)
 	al.contextManager = al.resolveContextManager()
+
+	// Plugin slash commands (commands/*.md from loaded plugins) sit on top of
+	// the builtin set; base definitions always win on name collisions.
+	al.cmdRegistry.SetExtras(plugins.Active().CommandDefinitions())
 
 	// Register shared tools to all agents (now that al is created)
 	registerSharedTools(al, cfg, msgBus, registry, provider)

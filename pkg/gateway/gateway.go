@@ -53,6 +53,7 @@ import (
 	"github.com/Kantemba/clawy/pkg/media"
 	"github.com/Kantemba/clawy/pkg/netbind"
 	"github.com/Kantemba/clawy/pkg/pid"
+	"github.com/Kantemba/clawy/pkg/plugins"
 	"github.com/Kantemba/clawy/pkg/providers"
 	"github.com/Kantemba/clawy/pkg/state"
 	"github.com/Kantemba/clawy/pkg/telemetry"
@@ -165,6 +166,11 @@ func Run(debug bool, homePath, configPath string, allowEmptyStartup bool) (runEr
 		return fmt.Errorf("config pre-check failed: %w", err)
 	}
 
+	// Discover plugins (skills, slash commands, MCP servers, hooks) and merge
+	// their contributions into cfg before the agent loop is constructed. Plugin
+	// problems are warnings, never startup failures.
+	pluginBundle := plugins.Bootstrap(cfg)
+
 	// Debug mode permanently overrides the config log level to DEBUG.
 	if debug {
 		fmt.Println("🔍 Debug mode enabled")
@@ -234,6 +240,9 @@ func Run(debug bool, homePath, configPath string, allowEmptyStartup bool) (runEr
 	startupStatus := collectGatewayStartupStatus(agentLoop.GetStartupInfo())
 	fmt.Printf("  • Tools: %d loaded\n", startupStatus.toolsCount)
 	fmt.Printf("  • Skills: %d/%d available\n", startupStatus.skillsAvailable, startupStatus.skillsTotal)
+	if !pluginBundle.IsEmpty() {
+		fmt.Printf("  • Plugins: %s\n", pluginBundle.Describe())
+	}
 
 	logger.InfoCF("agent", "Agent initialized", startupStatus.logFields)
 
@@ -655,6 +664,10 @@ func handleConfigReload(
 	debug bool,
 ) error {
 	logger.Info("🔄 Config file changed, reloading...")
+
+	// Re-discover plugins so newly added/removed plugin directories and their
+	// MCP servers, hooks, skills and commands follow the config reload.
+	plugins.Bootstrap(newCfg)
 
 	newModel := newCfg.Agents.Defaults.ModelName
 

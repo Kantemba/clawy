@@ -27,6 +27,57 @@ type Definition struct {
 	Aliases     []string
 	SubCommands []SubCommand // optional; when set, Executor routes to sub-command handlers
 	Handler     Handler      // for simple commands without sub-commands
+
+	// Prompt, when set, marks this definition as a prompt command: the markdown
+	// body is expanded with the message arguments and forwarded to the LLM
+	// instead of running a Go handler. This is how plugin commands
+	// (commands/*.md) are implemented; builtins leave it empty.
+	Prompt string
+}
+
+// ExpandPrompt renders a prompt command body with the arguments that followed
+// the command name.
+//
+// Supported placeholders:
+//
+//	{{args}} / $ARGUMENTS — the full argument string
+//	$1 .. $9              — individual argument tokens
+//
+// When the body contains no placeholder, the arguments are appended as a
+// final paragraph.
+func (d Definition) ExpandPrompt(args string) string {
+	args = strings.TrimSpace(args)
+	body := strings.TrimSpace(d.Prompt)
+	if body == "" {
+		return ""
+	}
+
+	fields := strings.Fields(args)
+	expanded := strings.ReplaceAll(body, "{{args}}", args)
+	expanded = strings.ReplaceAll(expanded, "$ARGUMENTS", args)
+	for i := 1; i <= 9; i++ {
+		value := ""
+		if i <= len(fields) {
+			value = fields[i-1]
+		}
+		expanded = strings.ReplaceAll(expanded, fmt.Sprintf("$%d", i), value)
+	}
+
+	if args == "" || strings.Contains(body, "{{args}}") || strings.Contains(body, "$ARGUMENTS") ||
+		containsPositionalPlaceholder(body) {
+		return strings.TrimSpace(expanded)
+	}
+	return strings.TrimSpace(expanded) + "\n\n" + args
+}
+
+// containsPositionalPlaceholder reports whether the body references $1..$9.
+func containsPositionalPlaceholder(body string) bool {
+	for i := 1; i <= 9; i++ {
+		if strings.Contains(body, fmt.Sprintf("$%d", i)) {
+			return true
+		}
+	}
+	return false
 }
 
 // EffectiveUsage returns the usage string. When SubCommands are present,
