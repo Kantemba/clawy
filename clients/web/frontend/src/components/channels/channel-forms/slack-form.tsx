@@ -10,6 +10,7 @@ import {
   parseAllowFromInput,
 } from "@/components/channels/channel-array-utils"
 import { getSecretInputPlaceholder } from "@/components/channels/channel-config-fields"
+import { ChannelOAuthConnect } from "@/components/channels/channel-forms/channel-oauth-connect"
 import { Field, KeyInput } from "@/components/shared-form"
 import { Card, CardContent } from "@/components/ui/card"
 
@@ -18,6 +19,7 @@ interface SlackFormProps {
   onChange: (key: string, value: unknown) => void
   configuredSecrets: string[]
   fieldErrors?: Record<string, string>
+  onBindSuccess?: () => void
   registerArrayFieldFlusher?: (
     fieldPath: string,
     flusher: ArrayFieldFlusher | null,
@@ -34,6 +36,7 @@ export function SlackForm({
   onChange,
   configuredSecrets,
   fieldErrors = {},
+  onBindSuccess,
   registerArrayFieldFlusher,
   arrayFieldResetVersion,
 }: SlackFormProps) {
@@ -41,6 +44,14 @@ export function SlackForm({
 
   return (
     <div className="space-y-6">
+      <ChannelOAuthConnect
+        channelName="slack"
+        config={config}
+        onChange={onChange}
+        configuredSecrets={configuredSecrets}
+        onBindSuccess={onBindSuccess}
+      />
+
       <Card className="shadow-sm">
         <CardContent className="divide-border/60 divide-y px-6 py-0 [&>div]:py-5">
           <Field

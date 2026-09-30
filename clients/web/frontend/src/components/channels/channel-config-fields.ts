@@ -23,8 +23,8 @@ export const SECRET_FIELD_MAP = {
 const CHANNEL_SECRET_FIELDS: Record<string, string[]> = {
   weixin: ["token"],
   telegram: ["token"],
-  discord: ["token"],
-  slack: ["bot_token", "app_token"],
+  discord: ["token", "client_secret"],
+  slack: ["bot_token", "app_token", "client_secret"],
   feishu: ["app_secret", "encrypt_key", "verification_token"],
   dingtalk: ["client_secret"],
   line: ["channel_secret", "channel_access_token"],

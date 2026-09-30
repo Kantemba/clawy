@@ -10,6 +10,7 @@ import TextareaAutosize from "react-textarea-autosize"
 
 import { ContextUsageRing } from "@/components/chat/context-usage-ring"
 import { Button } from "@/components/ui/button"
+import { useAgentIdentity } from "@/hooks/use-agent-identity"
 import { cn } from "@/lib/utils"
 import type { ChatAttachment, ContextUsage } from "@/store/chat"
 
@@ -63,6 +64,7 @@ export function ChatComposer({
   contextUsage,
 }: ChatComposerProps) {
   const { t } = useTranslation()
+  const { identity } = useAgentIdentity()
   const canInput = inputDisabledReason === null
   const composingRef = useRef(false)
   const hasInput = input.trim().length > 0
@@ -70,7 +72,8 @@ export function ChatComposer({
     inputDisabledReason === null
       ? null
       : t(`chat.disabledPlaceholder.${inputDisabledReason}`)
-  const placeholder = disabledMessage ?? t("chat.placeholder")
+  const placeholder =
+    disabledMessage ?? t("identity.message", { name: identity.name })
 
   const handleKeyDown = (e: ReactKeyboardEvent<HTMLTextAreaElement>) => {
     const nativeEvent = e.nativeEvent as Event & {
@@ -104,7 +107,7 @@ export function ChatComposer({
           onDrop={onDrop}
         >
           {isDragActive && (
-            <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center rounded-2xl border-2 border-dashed border-foreground/70 bg-foreground/10">
+            <div className="border-foreground/70 bg-foreground/10 pointer-events-none absolute inset-0 z-10 flex items-center justify-center rounded-2xl border-2 border-dashed">
               <div className="bg-background/95 text-foreground rounded-full px-4 py-2 text-sm font-medium shadow-sm">
                 {t("chat.dropImagesActive")}
               </div>
@@ -187,7 +190,7 @@ export function ChatComposer({
                   <Button
                     type="button"
                     size="icon"
-                    className="size-8 rounded-full bg-foreground text-background transition-transform hover:bg-foreground/90 active:scale-95"
+                    className="bg-foreground text-background hover:bg-foreground/90 size-8 rounded-full transition-transform active:scale-95"
                     onClick={onSend}
                     disabled={!canSend}
                     aria-label={t("chat.sendMessage")}
@@ -203,7 +206,7 @@ export function ChatComposer({
         <div
           aria-hidden={!hasInput}
           className={cn(
-            "border-border/50 bg-muted/55 text-muted-foreground mt-2 inline-flex items-center rounded-md border px-3 py-1 text-[11px] shadow-sm transition-all duration-200 dark:bg-muted/45",
+            "border-border/50 bg-muted/55 text-muted-foreground dark:bg-muted/45 mt-2 inline-flex items-center rounded-md border px-3 py-1 text-[11px] shadow-sm transition-all duration-200",
             hasInput
               ? "translate-y-0 opacity-100"
               : "pointer-events-none -translate-y-1 opacity-0",

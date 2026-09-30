@@ -1,13 +1,9 @@
-import {
-  IconPlugConnectedX,
-  IconRobot,
-  IconRobotOff,
-  IconStar,
-} from "@tabler/icons-react"
+import { IconPlugConnectedX, IconRobotOff, IconStar } from "@tabler/icons-react"
 import { Link } from "@tanstack/react-router"
 import { useTranslation } from "react-i18next"
 
 import { Button } from "@/components/ui/button"
+import { useAgentIdentity } from "@/hooks/use-agent-identity"
 
 interface ChatEmptyStateProps {
   hasAvailableModels: boolean
@@ -21,11 +17,12 @@ export function ChatEmptyState({
   isConnected,
 }: ChatEmptyStateProps) {
   const { t } = useTranslation()
+  const { identity } = useAgentIdentity()
 
   if (!hasAvailableModels) {
     return (
       <div className="flex flex-col items-center justify-center py-20 opacity-70">
-        <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-foreground/10 text-foreground">
+        <div className="bg-foreground/10 text-foreground mb-6 flex h-16 w-16 items-center justify-center rounded-2xl">
           <IconRobotOff className="h-8 w-8" />
         </div>
         <h3 className="mb-2 text-xl font-medium">
@@ -44,7 +41,7 @@ export function ChatEmptyState({
   if (!defaultModelName) {
     return (
       <div className="flex flex-col items-center justify-center py-20 opacity-70">
-        <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-foreground/10 text-foreground">
+        <div className="bg-foreground/10 text-foreground mb-6 flex h-16 w-16 items-center justify-center rounded-2xl">
           <IconStar className="h-8 w-8" />
         </div>
         <h3 className="mb-2 text-xl font-medium">
@@ -60,7 +57,7 @@ export function ChatEmptyState({
   if (!isConnected) {
     return (
       <div className="flex flex-col items-center justify-center py-20 opacity-70">
-        <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-foreground/10 text-foreground">
+        <div className="bg-foreground/10 text-foreground mb-6 flex h-16 w-16 items-center justify-center rounded-2xl">
           <IconPlugConnectedX className="h-8 w-8" />
         </div>
         <h3 className="mb-2 text-xl font-medium">
@@ -75,13 +72,23 @@ export function ChatEmptyState({
 
   return (
     <div className="flex flex-col items-center justify-center py-20 opacity-70">
-      <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-foreground/10 text-foreground">
-        <IconRobot className="h-8 w-8" />
+      <div className="bg-foreground/10 text-foreground mb-6 flex h-16 w-16 items-center justify-center rounded-2xl">
+        <span className="text-4xl" aria-hidden="true">
+          {identity.avatar}
+        </span>
       </div>
-      <h3 className="mb-2 text-xl font-medium">{t("chat.welcome")}</h3>
-      <p className="text-muted-foreground text-center text-sm">
-        {t("chat.welcomeDesc")}
+      <p className="text-muted-foreground mb-2 text-sm">
+        {t("identity.meet", { name: identity.name })}
       </p>
+      <h3 className="mb-2 max-w-xl text-center text-xl font-medium break-words">
+        {identity.greeting || t("chat.welcome")}
+      </h3>
+      <p className="text-muted-foreground text-center text-sm">
+        {identity.role || t("chat.welcomeDesc")}
+      </p>
+      <Button asChild variant="ghost" size="sm" className="mt-4">
+        <Link to="/setup">{t("identity.edit")}</Link>
+      </Button>
     </div>
   )
 }

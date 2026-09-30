@@ -15,6 +15,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/Kantemba/clawy/pkg/config"
+	"github.com/Kantemba/clawy/pkg/identity"
 	"github.com/Kantemba/clawy/pkg/logger"
 	"github.com/Kantemba/clawy/pkg/providers"
 	"github.com/Kantemba/clawy/pkg/skills"
@@ -147,6 +148,11 @@ func (cb *ContextBuilder) promptRegistryOrDefault() *PromptRegistry {
 func (cb *ContextBuilder) getIdentity(includeToolUseRule bool) string {
 	workspacePath, _ := filepath.Abs(filepath.Join(cb.workspace))
 	version := config.FormatVersion()
+	profile, err := identity.Load(cb.workspace)
+	if err != nil {
+		logger.WarnCF("agent", "Failed to read identity; using default", map[string]any{"error": err.Error()})
+		profile = identity.Default()
+	}
 	rules := []string{}
 	if includeToolUseRule {
 		rules = append(rules, toolUseSystemPromptRule())
@@ -172,10 +178,11 @@ func (cb *ContextBuilder) getIdentity(includeToolUseRule bool) string {
 	}
 
 	return fmt.Sprintf(
-		`# clawy 🦞 (%s)
+		`# %s %s (%s)
 
-You are clawy, a helpful AI assistant.
+You are %s, a helpful AI assistant.
 
+%s
 ## Workspace
 Your workspace is at: %s
 - Memory: %s/memory/MEMORY.md (managed via the memory tool)
@@ -185,7 +192,11 @@ Your workspace is at: %s
 
 %s
 `,
+		profile.Name,
+		profile.Avatar,
 		version,
+		profile.Name,
+		profile.Prompt(),
 		workspacePath,
 		workspacePath,
 		workspacePath,
@@ -250,7 +261,7 @@ func (cb *ContextBuilder) buildSystemPromptParts(opts systemPromptBuildOptions) 
 		Layer:   PromptLayerKernel,
 		Slot:    PromptSlotIdentity,
 		Source:  PromptSource{ID: PromptSourceKernel, Name: "identity"},
-		Title:   "clawy identity",
+		Title:   "agent identity",
 		Content: cb.getIdentity(opts.IncludeToolUseRule),
 		Stable:  true,
 		Cache:   PromptCacheEphemeral,
@@ -552,7 +563,7 @@ func (cb *ContextBuilder) InvalidateCache() {
 func (cb *ContextBuilder) sourcePaths() []string {
 	agentDefinition := cb.LoadAgentDefinition()
 	paths := agentDefinition.trackedPaths(cb.workspace)
-	paths = append(paths, filepath.Join(cb.workspace, "memory", "MEMORY.md"))
+	paths = append(paths, filepath.Join(cb.workspace, "memory", "MEMORY.md"), filepath.Join(cb.workspace, identity.FileName))
 	return uniquePaths(paths)
 }
 

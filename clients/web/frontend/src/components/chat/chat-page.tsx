@@ -35,6 +35,7 @@ import {
   getTransferredFiles,
   hasFileTransfer,
 } from "@/features/chat/image-input"
+import { useAgentIdentity } from "@/hooks/use-agent-identity"
 import { useChatModels } from "@/hooks/use-chat-models"
 import { useGateway } from "@/hooks/use-gateway"
 import { usePicoChat } from "@/hooks/use-pico-chat"
@@ -102,6 +103,7 @@ function resolveChatInputDisabledReason({
 
 export function ChatPage() {
   const { t } = useTranslation()
+  const { identity } = useAgentIdentity()
   const scrollRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const dragDepthRef = useRef(0)
@@ -311,7 +313,7 @@ export function ChatPage() {
   return (
     <div className="bg-background/95 flex h-full flex-col">
       <PageHeader
-        title={t("navigation.chat")}
+        title={identity.name}
         className={`transition-shadow ${
           hasScrolled ? "shadow-xs" : "shadow-none"
         }`}

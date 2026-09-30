@@ -6,6 +6,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/Kantemba/clawy/pkg/identity"
 	"github.com/Kantemba/clawy/pkg/routing"
 )
 
@@ -117,6 +118,10 @@ func (r *AgentRegistry) GetAgentDescriptor(agentID string) (*AgentDescriptor, bo
 func (r *AgentRegistry) buildAgentDescriptorLocked(agent *AgentInstance) AgentDescriptor {
 	definition := loadAgentDefinition(agent.Workspace)
 	name, description := descriptorIdentity(agent.ID, definition)
+	if profile, err := identity.Load(agent.Workspace); err == nil && profile.Configured {
+		name = profile.Name
+		description = profile.Role
+	}
 
 	return AgentDescriptor{
 		ID:          agent.ID,

@@ -16,12 +16,13 @@ import rehypeSanitize from "rehype-sanitize"
 import remarkGfm from "remark-gfm"
 
 import {
-  MessageCodeBlock,
   MarkdownCodeBlock,
+  MessageCodeBlock,
 } from "@/components/chat/message-code-block"
 import { Button } from "@/components/ui/button"
-import { formatMessageTime } from "@/hooks/use-pico-chat"
+import { useAgentIdentity } from "@/hooks/use-agent-identity"
 import { useCopyToClipboard } from "@/hooks/use-copy-to-clipboard"
+import { formatMessageTime } from "@/hooks/use-pico-chat"
 import { cn } from "@/lib/utils"
 import {
   type AssistantMessageKind,
@@ -47,6 +48,7 @@ export function AssistantMessage({
   timestamp = "",
 }: AssistantMessageProps) {
   const { t } = useTranslation()
+  const { identity } = useAgentIdentity()
   const { copy, isCopied } = useCopyToClipboard()
   const isThought = kind === "thought"
   const isToolCalls = kind === "tool_calls"
@@ -73,9 +75,11 @@ export function AssistantMessage({
   return (
     <div className="group flex w-full flex-col gap-1.5">
       {!isCollapsedBlock && (
-          <div className="text-muted-foreground/60 flex items-center justify-between gap-2 px-1 text-xs opacity-70">
+        <div className="text-muted-foreground/60 flex items-center justify-between gap-2 px-1 text-xs opacity-70">
           <div className="flex items-center gap-2">
-            <span>Clawy</span>
+            <span>
+              {identity.avatar} {identity.name}
+            </span>
             {trimmedModelName && (
               <>
                 <span className="opacity-50">•</span>
@@ -114,7 +118,9 @@ export function AssistantMessage({
                 )}
                 <span>{collapsedLabel}</span>
                 {trimmedModelName && (
-                  <span className="text-muted-foreground/45">{trimmedModelName}</span>
+                  <span className="text-muted-foreground/45">
+                    {trimmedModelName}
+                  </span>
                 )}
               </div>
               <div className="flex items-center gap-2">
@@ -194,7 +200,9 @@ export function AssistantMessage({
                             <MessageCodeBlock
                               code={toolArguments}
                               language="json"
-                              label={toolName || t("chat.toolCallArgumentsLabel")}
+                              label={
+                                toolName || t("chat.toolCallArgumentsLabel")
+                              }
                               className="my-0 shadow-none"
                               bodyClassName="px-3 py-2 text-[12px] leading-relaxed"
                             />
@@ -240,7 +248,7 @@ export function AssistantMessage({
               title={copyMessageLabel}
             >
               {isCopied ? (
-                <IconCheck className="h-4 w-4 text-foreground" />
+                <IconCheck className="text-foreground h-4 w-4" />
               ) : (
                 <IconCopy className="text-muted-foreground h-4 w-4" />
               )}
@@ -277,13 +285,13 @@ export function AssistantMessage({
               key={`${attachment.url}-${index}`}
               href={attachment.url}
               download={attachment.filename}
-              className="group/file border-border/60 bg-card flex w-fit max-w-sm min-w-[220px] items-center gap-3.5 rounded-xl border px-4 py-3 transition-all duration-300 hover:-translate-y-0.5 hover:border-foreground/30 hover:shadow-sm dark:hover:border-foreground/40"
+              className="group/file border-border/60 bg-card hover:border-foreground/30 dark:hover:border-foreground/40 flex w-fit max-w-sm min-w-[220px] items-center gap-3.5 rounded-xl border px-4 py-3 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-sm"
             >
-              <div className="bg-foreground/10 text-foreground flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ring-1 ring-foreground/10">
+              <div className="bg-foreground/10 text-foreground ring-foreground/10 flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ring-1">
                 <IconFileText className="h-5 w-5" />
               </div>
               <div className="flex min-w-0 flex-1 flex-col pr-1">
-                <span className="text-foreground/90 truncate text-[14px] leading-tight font-medium transition-colors group-hover/file:text-foreground">
+                <span className="text-foreground/90 group-hover/file:text-foreground truncate text-[14px] leading-tight font-medium transition-colors">
                   {attachment.filename || "Download file"}
                 </span>
                 <span className="text-muted-foreground/70 mt-1 text-[12px] font-medium">
@@ -291,7 +299,7 @@ export function AssistantMessage({
                     "FILE"}
                 </span>
               </div>
-              <div className="bg-muted/60 text-muted-foreground/50 dark:bg-muted/20 flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-all duration-300 group-hover/file:bg-foreground group-hover/file:text-background group-hover/file:shadow-sm">
+              <div className="bg-muted/60 text-muted-foreground/50 dark:bg-muted/20 group-hover/file:bg-foreground group-hover/file:text-background flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-all duration-300 group-hover/file:shadow-sm">
                 <IconDownload className="h-4 w-4 transition-transform duration-300 group-hover/file:-translate-y-[1px]" />
               </div>
             </a>

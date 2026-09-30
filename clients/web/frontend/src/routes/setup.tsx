@@ -1,6 +1,8 @@
 import { Link, createFileRoute } from "@tanstack/react-router"
+import { useState } from "react"
 import { useTranslation } from "react-i18next"
 
+import { IdentityEditor } from "@/components/agent/identity-editor"
 import { PageHeader } from "@/components/page-header"
 import { Button } from "@/components/ui/button"
 import {
@@ -10,11 +12,21 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
+import { useAgentIdentity } from "@/hooks/use-agent-identity"
 import { useGateway } from "@/hooks/use-gateway"
 import { refreshGatewayState } from "@/store/gateway"
 
 function SetupPage() {
   const { t } = useTranslation()
+  const {
+    identity,
+    data,
+    isPending,
+    error: identityError,
+    refetch,
+  } = useAgentIdentity()
+  const [identityDirty, setIdentityDirty] = useState(false)
+  const identityReady = identity.configured && !identityDirty
   const { state, canStart, startReason, start, loading, error } = useGateway()
   const running = state === "running"
   const busy =
@@ -28,8 +40,39 @@ function SetupPage() {
     <div className="flex h-full flex-col">
       <PageHeader title={t("onboarding.title")} />
       <div className="min-h-0 flex-1 overflow-y-auto p-4 md:p-8">
-        <div className="mx-auto flex max-w-2xl flex-col gap-4">
+        <div className="mx-auto flex max-w-4xl flex-col gap-4">
           <p className="text-muted-foreground">{t("onboarding.description")}</p>
+          <Card className="overflow-hidden">
+            <CardHeader className="bg-muted/20 border-b">
+              <CardTitle>{t("identity.title")}</CardTitle>
+              <CardDescription>{t("identity.description")}</CardDescription>
+            </CardHeader>
+            <CardContent className="pt-6">
+              {isPending ? (
+                <p role="status">{t("labels.loading")}</p>
+              ) : identityError ? (
+                <div className="space-y-3">
+                  <p role="alert" className="text-destructive text-sm">
+                    {identityError.message}
+                  </p>
+                  <Button variant="outline" onClick={() => void refetch()}>
+                    {t("onboarding.checkAgain")}
+                  </Button>
+                </div>
+              ) : data ? (
+                <IdentityEditor
+                  key={JSON.stringify(data)}
+                  profile={data}
+                  onDirtyChange={setIdentityDirty}
+                />
+              ) : null}
+              {identity.configured && !identityDirty && (
+                <p className="text-muted-foreground mt-4 text-sm" role="status">
+                  {t("identity.saved", { name: identity.name })}
+                </p>
+              )}
+            </CardContent>
+          </Card>
           <Card>
             <CardHeader>
               <CardTitle>{t("onboarding.passwordTitle")}</CardTitle>
@@ -94,13 +137,23 @@ function SetupPage() {
               </CardDescription>
             </CardHeader>
             <CardContent className="flex flex-col gap-3">
-              {running ? (
+              {!identityReady && (
+                <p className="text-muted-foreground text-sm">
+                  {t("identity.saveFirst")}
+                </p>
+              )}
+              {running && identityReady ? (
                 <Button asChild>
                   <Link to="/">{t("onboarding.openChat")}</Link>
                 </Button>
               ) : (
-                <Button disabled={!ready || busy} onClick={() => void start()}>
-                  {busy ? t("labels.loading") : t("onboarding.start")}
+                <Button
+                  disabled={!identityReady || !ready || busy || running}
+                  onClick={() => void start()}
+                >
+                  {busy
+                    ? t("labels.loading")
+                    : t("identity.bringToLife", { name: identity.name })}
                 </Button>
               )}
               {error && (

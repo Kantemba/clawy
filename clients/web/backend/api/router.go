@@ -23,6 +23,9 @@ type Handler struct {
 	oauthMu                    sync.Mutex
 	oauthFlows                 map[string]*oauthFlow
 	oauthState                 map[string]string
+	channelOAuthMu             sync.Mutex
+	channelOAuthFlows          map[string]*channelOAuthFlow
+	channelOAuthState          map[string]string
 	weixinMu                   sync.Mutex
 	weixinFlows                map[string]*weixinFlow
 	wecomMu                    sync.Mutex
@@ -37,6 +40,8 @@ func NewHandler(configPath string) *Handler {
 		serverAllowLocalhostBypass: launcherconfig.Default().AllowLocalhostBypass,
 		oauthFlows:                 make(map[string]*oauthFlow),
 		oauthState:                 make(map[string]string),
+		channelOAuthFlows:          make(map[string]*channelOAuthFlow),
+		channelOAuthState:          make(map[string]string),
 		weixinFlows:                make(map[string]*weixinFlow),
 		wecomFlows:                 make(map[string]*wecomFlow),
 	}
@@ -73,8 +78,9 @@ func (h *Handler) SetDebug(debug bool) {
 
 // RegisterRoutes binds all API endpoint handlers to the ServeMux.
 func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
-	// Config CRUD
+	// Config CRUD and user-owned agent identity
 	h.registerConfigRoutes(mux)
+	h.registerIdentityRoutes(mux)
 
 	// Pico Channel (WebSocket chat)
 	h.registerPicoRoutes(mux)
@@ -93,6 +99,9 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 
 	// Channel catalog (for frontend navigation/config pages)
 	h.registerChannelRoutes(mux)
+
+	// Channel OAuth connect (Slack / Discord)
+	h.registerChannelOAuthRoutes(mux)
 
 	// Skills and tools support/actions
 	h.registerSkillRoutes(mux)

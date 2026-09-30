@@ -39,11 +39,16 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
+import { useAgentIdentity } from "@/hooks/use-agent-identity"
 import { useGateway } from "@/hooks/use-gateway.ts"
 import { useTheme } from "@/hooks/use-theme.ts"
 
 export function AppHeader() {
   const { i18n, t } = useTranslation()
+  const { identity } = useAgentIdentity()
+  React.useEffect(() => {
+    document.title = `${identity.name} · Clawy`
+  }, [identity.name])
   const { theme, toggleTheme } = useTheme()
   const {
     state: gwState,
@@ -103,11 +108,26 @@ export function AppHeader() {
         <SidebarTrigger className="text-muted-foreground hover:bg-accent hover:text-foreground flex h-9 w-9 items-center justify-center rounded-lg sm:hidden [&>svg]:size-5">
           <IconMenu2 />
         </SidebarTrigger>
-        <div className="hidden w-36 shrink-0 items-center sm:flex">
-          <Link to="/">
-            <img className="w-full" src="/logo_with_text.png" alt="Logo" />
-          </Link>
-        </div>
+        <Link
+          to="/setup"
+          className="flex min-w-0 items-center gap-2"
+          aria-label={t("identity.edit")}
+        >
+          <span
+            className="bg-muted flex size-9 shrink-0 items-center justify-center rounded-xl text-xl"
+            aria-hidden="true"
+          >
+            {identity.avatar}
+          </span>
+          <div className="min-w-0">
+            <span className="block max-w-24 truncate text-sm font-semibold sm:max-w-40">
+              {identity.name}
+            </span>
+            <span className="text-muted-foreground hidden text-[10px] sm:block">
+              {t("identity.poweredBy")}
+            </span>
+          </div>
+        </Link>
       </div>
 
       {/* Center prominent connection status */}

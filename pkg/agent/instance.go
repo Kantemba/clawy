@@ -383,6 +383,13 @@ func resolvePrimaryProviderForAgent(
 
 // resolveAgentWorkspace determines the workspace directory for an agent.
 func resolveAgentWorkspace(agentCfg *config.AgentConfig, defaults *config.AgentDefaults) string {
+	return ResolveAgentWorkspace(agentCfg, defaults)
+}
+
+// ResolveAgentWorkspace returns the runtime workspace, including explicit agent
+// overrides and per-agent directories. Dashboard identity storage uses the same
+// resolution as the runtime to avoid customizing an unused default directory.
+func ResolveAgentWorkspace(agentCfg *config.AgentConfig, defaults *config.AgentDefaults) string {
 	if agentCfg != nil && strings.TrimSpace(agentCfg.Workspace) != "" {
 		return expandHome(strings.TrimSpace(agentCfg.Workspace))
 	}

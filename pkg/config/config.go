@@ -624,9 +624,16 @@ type FeishuSettings struct {
 }
 
 type DiscordSettings struct {
-	Token       SecureString `json:"token,omitzero" yaml:"token,omitempty" env:"CLAWY_CHANNELS_DISCORD_TOKEN"`
-	Proxy       string       `json:"proxy"          yaml:"-"               env:"CLAWY_CHANNELS_DISCORD_PROXY"`
-	MentionOnly bool         `json:"mention_only"   yaml:"-"               env:"CLAWY_CHANNELS_DISCORD_MENTION_ONLY"`
+	Token SecureString `json:"token,omitzero" yaml:"token,omitempty" env:"CLAWY_CHANNELS_DISCORD_TOKEN"`
+	// ClientID/ClientSecret identify the Discord application used by the web
+	// console's OAuth install flow. They are not needed once Token is set.
+	ClientID     string       `json:"client_id,omitzero"     yaml:"client_id,omitempty"     env:"CLAWY_CHANNELS_DISCORD_CLIENT_ID"`
+	ClientSecret SecureString `json:"client_secret,omitzero" yaml:"client_secret,omitempty" env:"CLAWY_CHANNELS_DISCORD_CLIENT_SECRET"`
+	// Permissions is the permission bitfield requested when installing the bot
+	// through OAuth. Empty means Clawy's recommended default.
+	Permissions string `json:"permissions,omitzero" yaml:"permissions,omitempty" env:"CLAWY_CHANNELS_DISCORD_PERMISSIONS"`
+	Proxy       string `json:"proxy"                 yaml:"-"                     env:"CLAWY_CHANNELS_DISCORD_PROXY"`
+	MentionOnly bool   `json:"mention_only"          yaml:"-"                     env:"CLAWY_CHANNELS_DISCORD_MENTION_ONLY"`
 }
 
 type MaixCamSettings struct {
@@ -650,6 +657,13 @@ type DingTalkSettings struct {
 type SlackSettings struct {
 	BotToken SecureString `json:"bot_token,omitzero" yaml:"bot_token,omitempty" env:"CLAWY_CHANNELS_SLACK_BOT_TOKEN"`
 	AppToken SecureString `json:"app_token,omitzero" yaml:"app_token,omitempty" env:"CLAWY_CHANNELS_SLACK_APP_TOKEN"`
+	// ClientID/ClientSecret identify the Slack app used by the web console's
+	// OAuth install flow. They are not needed once BotToken is set.
+	ClientID     string       `json:"client_id,omitzero"     yaml:"client_id,omitempty"     env:"CLAWY_CHANNELS_SLACK_CLIENT_ID"`
+	ClientSecret SecureString `json:"client_secret,omitzero" yaml:"client_secret,omitempty" env:"CLAWY_CHANNELS_SLACK_CLIENT_SECRET"`
+	// OAuthScopes is the comma-separated bot scope list requested during the
+	// OAuth flow. Empty means Clawy's recommended default scope list.
+	OAuthScopes string `json:"oauth_scopes,omitzero" yaml:"oauth_scopes,omitempty" env:"CLAWY_CHANNELS_SLACK_OAUTH_SCOPES"`
 }
 
 // WebChatSettings configures the built-in browser chat surface served from

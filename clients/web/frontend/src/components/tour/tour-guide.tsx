@@ -3,10 +3,12 @@ import {
   IconChevronLeft,
   IconChevronRight,
 } from "@tabler/icons-react"
+import { useRouterState } from "@tanstack/react-router"
 import { useAtom } from "jotai"
 import { useTranslation } from "react-i18next"
 
 import { Button } from "@/components/ui/button"
+import { useAgentIdentity } from "@/hooks/use-agent-identity"
 import { cn } from "@/lib/utils"
 import {
   type TourStep,
@@ -27,19 +29,28 @@ interface TourStepConfig {
 
 export function TourGuide() {
   const { t } = useTranslation()
+  const { identity } = useAgentIdentity()
+  const pathname = useRouterState({
+    select: (state) => state.location.pathname,
+  })
   const [tourState] = useAtom(tourAtom)
   const [, setCurrentStep] = useAtom(tourCurrentStepAtom)
   const [, setIsActive] = useAtom(tourIsActiveAtom)
   const { goToNextStep, goToPrevStep } = useTourActions()
 
-  if (!tourState.isActive || tourState.currentStep === "completed") {
+  if (
+    pathname === "/setup" ||
+    !identity.configured ||
+    !tourState.isActive ||
+    tourState.currentStep === "completed"
+  ) {
     return null
   }
 
   const steps: Record<TourStep, TourStepConfig> = {
     welcome: {
-      title: t("tour.welcome.title"),
-      description: t("tour.welcome.description"),
+      title: t("identity.meet", { name: identity.name }),
+      description: t("identity.tourDescription"),
       position: "bottom",
     },
     models: {

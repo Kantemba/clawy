@@ -125,4 +125,68 @@ export async function pollWecomFlow(
   )
 }
 
+// Slack / Discord OAuth connect flow API
+
+export type ChannelOAuthFlowStatus =
+  | "pending"
+  | "success"
+  | "error"
+  | "expired"
+  | "needs_token"
+
+export interface ChannelOAuthFlowResponse {
+  flow_id: string
+  channel: string
+  status: ChannelOAuthFlowStatus
+  account_id?: string
+  expires_at?: string
+  error?: string
+  auth_url?: string
+  redirect_uri?: string
+}
+
+export interface ChannelOAuthStartRequest {
+  client_id?: string
+  client_secret?: string
+  scopes?: string
+  permissions?: string
+}
+
+// The OAuth endpoints report failures as plain text, so surface the raw body
+// instead of the generic JSON error message.
+async function requestWithTextError<T>(
+  path: string,
+  options?: RequestInit,
+): Promise<T> {
+  const res = await launcherFetch(`${BASE_URL}${path}`, options)
+  if (!res.ok) {
+    const body = (await res.text()).trim()
+    throw new Error(body || `API error: ${res.status} ${res.statusText}`)
+  }
+  return res.json() as Promise<T>
+}
+
+export async function startChannelOAuth(
+  channelName: string,
+  payload: ChannelOAuthStartRequest,
+): Promise<ChannelOAuthFlowResponse> {
+  return requestWithTextError<ChannelOAuthFlowResponse>(
+    `/api/channels/${encodeURIComponent(channelName)}/oauth/start`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    },
+  )
+}
+
+export async function pollChannelOAuth(
+  channelName: string,
+  flowID: string,
+): Promise<ChannelOAuthFlowResponse> {
+  return requestWithTextError<ChannelOAuthFlowResponse>(
+    `/api/channels/${encodeURIComponent(channelName)}/oauth/flows/${encodeURIComponent(flowID)}`,
+  )
+}
+
 export type { ChannelsCatalogResponse, ConfigActionResponse }

@@ -557,6 +557,36 @@ export function ChannelConfigPage({ channelName }: ChannelConfigPageProps) {
     }
   }, [loadData, t])
 
+  const handleChannelOAuthSuccess = useCallback(async () => {
+    if (!channel) return
+    // Persist the OAuth app credentials the user typed before connecting.
+    // Best effort: the token itself is already stored by the backend.
+    try {
+      const savePayload = buildSavePayload(
+        channel,
+        flushPendingArrayFieldDrafts(editConfig),
+        true,
+      )
+      await patchAppConfig({
+        channel_list: {
+          [channel.config_key]: savePayload,
+        },
+      })
+    } catch {
+      // ignore — the OAuth flow already saved the channel token
+    }
+
+    try {
+      setEnabled(true)
+      await Promise.all([loadData(true), refreshGatewayState({ force: true })])
+    } catch (e) {
+      const message =
+        e instanceof Error ? e.message : t("channels.page.saveError")
+      setServerError(message)
+      await loadData(true)
+    }
+  }, [channel, editConfig, flushPendingArrayFieldDrafts, loadData, t])
+
   const handleWecomEnabledChange = useCallback(
     async (nextEnabled: boolean) => {
       try {
@@ -598,6 +628,7 @@ export function ChannelConfigPage({ channelName }: ChannelConfigPageProps) {
             onChange={handleChange}
             configuredSecrets={configuredSecrets}
             fieldErrors={fieldErrors}
+            onBindSuccess={() => void handleChannelOAuthSuccess()}
             registerArrayFieldFlusher={registerArrayFieldFlusher}
             arrayFieldResetVersion={arrayFieldResetVersion}
           />
@@ -609,6 +640,7 @@ export function ChannelConfigPage({ channelName }: ChannelConfigPageProps) {
             onChange={handleChange}
             configuredSecrets={configuredSecrets}
             fieldErrors={fieldErrors}
+            onBindSuccess={() => void handleChannelOAuthSuccess()}
             registerArrayFieldFlusher={registerArrayFieldFlusher}
             arrayFieldResetVersion={arrayFieldResetVersion}
           />

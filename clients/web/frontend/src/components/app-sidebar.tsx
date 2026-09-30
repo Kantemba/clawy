@@ -95,7 +95,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         ...baseNavGroups[0],
         items: [
           {
-            title: "onboarding.title",
+            title: "identity.edit",
             url: "/setup",
             icon: IconListDetails,
             translateTitle: true,

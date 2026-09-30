@@ -135,7 +135,10 @@
       "reasoning_channel_id": "",
       "settings": {
         "token": "YOUR_DISCORD_BOT_TOKEN",
-        "proxy": ""
+        "proxy": "",
+        "client_id": "YOUR_DISCORD_APPLICATION_ID",
+        "client_secret": "YOUR_DISCORD_CLIENT_SECRET",
+        "permissions": "274878024704"
       }
     },
     "qq": {
@@ -204,7 +207,10 @@
       "reasoning_channel_id": "",
       "settings": {
         "bot_token": "xoxb-YOUR-BOT-TOKEN",
-        "app_token": "xapp-YOUR-APP-TOKEN"
+        "app_token": "xapp-YOUR-APP-TOKEN",
+        "client_id": "YOUR_SLACK_CLIENT_ID",
+        "client_secret": "YOUR_SLACK_CLIENT_SECRET",
+        "oauth_scopes": "chat:write,files:write,reactions:write"
       }
     },
     "matrix": {
