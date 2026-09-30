@@ -41,7 +41,7 @@ function LauncherSetupPage() {
     try {
       const result = await postLauncherDashboardSetup(password, confirm)
       if (result.ok) {
-        globalThis.location.assign("/launcher-login")
+        globalThis.location.assign("/setup")
         return
       }
       setError(result.error)

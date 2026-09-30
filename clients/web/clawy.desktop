@@ -1,8 +1,8 @@
 [Desktop Entry]
-Name=Clawy Launcher
+Name=Clawy
 Comment=Web-based configuration and management UI for Clawy
-Exec=clawy-launcher
-Icon=clawy-launcher
+Exec=clawy start
+Icon=clawy
 Terminal=true
 Type=Application
 Categories=Utility;Network;

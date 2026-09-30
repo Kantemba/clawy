@@ -69,7 +69,7 @@ jobs:
 
       # 4. Apply ad-hoc signing
       - name: Ad-hoc Sign
-        run: codesign --force --deep --sign - "build/Clawy Launcher.app"
+        run: codesign --force --deep --sign - "build/Clawy.app"
 
       # 5. Install the DMG packaging tool
       - name: Install create-dmg
@@ -87,11 +87,11 @@ jobs:
             --window-pos 200 120 \
             --window-size 800 400 \
             --icon-size 100 \
-            --icon "Clawy Launcher.app" 200 190 \
-            --hide-extension "Clawy Launcher.app" \
+            --icon "Clawy.app" 200 190 \
+            --hide-extension "Clawy.app" \
             --app-drop-link 600 185 \
             "dist/clawy_${VERSION}_macOS_${{ matrix.arch }}.dmg" \
-            "build/Clawy Launcher.app"
+            "build/Clawy.app"
 
       # 7. Upload the DMG as a workflow artifact
       - name: Upload artifact

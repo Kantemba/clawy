@@ -5,14 +5,22 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"runtime"
 	"strings"
 	"sync/atomic"
 	"time"
 )
 
+// shouldUseFallbackDNS limits the no-resolv.conf workaround to platforms that
+// actually use that file. Windows and macOS must keep their native resolver,
+// including local hosts-file resolution for the embedded web console.
+func shouldUseFallbackDNS(goos string, resolvErr error) bool {
+	return (goos == "android" || goos == "linux") && os.IsNotExist(resolvErr)
+}
+
 func init() {
-	// 仅在 /etc/resolv.conf 不存在时才覆盖（即 Android 环境）
-	if _, err := os.Stat("/etc/resolv.conf"); err == nil {
+	_, err := os.Stat("/etc/resolv.conf")
+	if !shouldUseFallbackDNS(runtime.GOOS, err) {
 		return
 	}
 
@@ -33,6 +41,11 @@ func init() {
 			}
 			dnsServers = append(dnsServers, s)
 		}
+	}
+
+	// A whitespace-only override must not leave an empty server list.
+	if len(dnsServers) == 0 {
+		dnsServers = []string{"8.8.8.8:53", "1.1.1.1:53"}
 	}
 
 	// 轮询索引，在多个 DNS 服务器之间轮转

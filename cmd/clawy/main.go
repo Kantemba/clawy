@@ -29,6 +29,7 @@ import (
 	pairingcmd "github.com/Kantemba/clawy/cmd/clawy/internal/pairing"
 	plugincmd "github.com/Kantemba/clawy/cmd/clawy/internal/plugin"
 	"github.com/Kantemba/clawy/cmd/clawy/internal/skills"
+	"github.com/Kantemba/clawy/cmd/clawy/internal/start"
 	"github.com/Kantemba/clawy/cmd/clawy/internal/status"
 	"github.com/Kantemba/clawy/cmd/clawy/internal/version"
 	"github.com/Kantemba/clawy/pkg/config"
@@ -109,8 +110,12 @@ Version: %s`, internal.Logo, config.FormatVersion())
 		Use:   "clawy",
 		Short: short,
 		Long:  long,
-		Example: `clawy version
-clawy onboard
+		Args:  cobra.NoArgs,
+		RunE: func(c *cobra.Command, _ []string) error {
+			return start.RunDefault(c.Context())
+		},
+		Example: `clawy start
+clawy version
 clawy --no-color status`,
 		SilenceErrors: true,
 		// Avoid plain UsageString() on stderr/stdout when a command fails; cliui
@@ -130,6 +135,7 @@ clawy --no-color status`,
 	})
 
 	cmd.AddCommand(
+		start.NewStartCommand(),
 		configcmd.NewConfigCommand(),
 		onboard.NewOnboardCommand(),
 		agent.NewAgentCommand(),

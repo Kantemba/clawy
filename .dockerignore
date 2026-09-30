@@ -9,3 +9,7 @@ config/
 .env.example
 *.md
 assets/
+**/node_modules/
+**/dist/
+# Workspace Markdown is embedded in the single Clawy executable.
+!workspace/**/*.md

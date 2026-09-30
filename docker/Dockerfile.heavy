@@ -1,9 +1,17 @@
+FROM node:24-alpine3.23 AS frontend
+WORKDIR /src/clients/web/frontend
+RUN corepack enable
+COPY clients/web/frontend/package.json clients/web/frontend/pnpm-lock.yaml ./
+RUN pnpm install --frozen-lockfile
+COPY clients/web/frontend/ ./
+RUN pnpm build:backend
+
 # ============================================================
 # Stage 1: Build the clawy binary
 # ============================================================
 FROM golang:1.25-alpine AS builder
 
-RUN apk add --no-cache git make
+RUN apk add --no-cache git make bash
 
 WORKDIR /src
 
@@ -13,7 +21,8 @@ RUN go mod download
 
 # Copy source and build
 COPY . .
-RUN make build
+COPY --from=frontend /src/clients/web/backend/dist ./clients/web/backend/dist
+RUN SKIP_WEB_BUILD=1 make build
 
 # ============================================================
 # Stage 2: Node.js runtime with Python + MCP support
@@ -43,18 +52,16 @@ RUN curl -LsSf https://astral.sh/uv/install.sh | sh && \
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD wget -q --spider http://localhost:18790/health || exit 1
+  CMD wget -q --spider http://localhost:18800/api/auth/status || exit 1
 
 # Copy binary
 COPY --from=builder /src/build/clawy /usr/local/bin/clawy
-
-# Run onboard to create initial directories and config
-RUN /usr/local/bin/clawy onboard
 
 # Copy default workspace
 COPY workspace/ /root/.clawy/workspace/
 
 VOLUME /root/.clawy/workspace
 
+EXPOSE 18800
 ENTRYPOINT ["clawy"]
-CMD ["gateway"]
+CMD ["start", "--public", "--no-browser"]

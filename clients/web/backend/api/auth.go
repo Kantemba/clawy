@@ -319,6 +319,9 @@ func (h *launcherAuthHandlers) handleSetup(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
+	// Password creation is also the first login: continue onboarding without
+	// asking the user to enter the same password a second time.
+	middleware.SetLauncherDashboardSessionCookie(w, r, h.sessionCookie, h.secureCookie)
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write([]byte(`{"status":"ok"}`))
 }

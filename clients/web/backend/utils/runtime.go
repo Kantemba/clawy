@@ -27,17 +27,9 @@ func GetDefaultConfigPath() string {
 	return filepath.Join(GetClawyHome(), "config.json")
 }
 
-// FindClawyBinary locates the clawy executable.
-// Search order:
-//  1. CLAWY_BINARY environment variable (explicit override)
-//  2. Same directory as the current executable
-//  3. Falls back to "clawy" and relies on $PATH
+// FindClawyBinary returns this executable for gateway subprocesses. The
+// explicit override is retained for development and existing deployments.
 func FindClawyBinary() string {
-	binaryName := "clawy"
-	if runtime.GOOS == "windows" {
-		binaryName = "clawy.exe"
-	}
-
 	if p := os.Getenv(config.EnvBinary); p != "" {
 		if info, _ := os.Stat(p); info != nil && !info.IsDir() {
 			return p
@@ -45,11 +37,8 @@ func FindClawyBinary() string {
 	}
 
 	if exe, err := os.Executable(); err == nil {
-		logger.Debugf("Trying to find clawy binary in %s", exe)
-		candidate := filepath.Join(filepath.Dir(exe), binaryName)
-		if info, err := os.Stat(candidate); err == nil && !info.IsDir() {
-			return candidate
-		}
+		logger.Debugf("Using current Clawy executable: %s", exe)
+		return exe
 	}
 
 	return "clawy"

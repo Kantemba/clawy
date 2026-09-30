@@ -1,4 +1,4 @@
-.PHONY: all build install uninstall clean help test integration-test build-all lint-docs
+.PHONY: all build build-web install uninstall clean help test integration-test build-all lint-docs
 
 # Build variables
 BINARY_NAME=clawy
@@ -206,8 +206,12 @@ else
 endif
 	@echo "Run generate complete"
 
-## build: Build the clawy binary for current platform
-build: generate
+## build-web: Compile the web UI embedded in every Clawy binary
+build-web:
+	@bash ./scripts/build-web.sh
+
+## build: Build the single Clawy binary (CLI and web console)
+build: generate build-web
 	@echo "Building $(BINARY_NAME)$(EXT) for $(PLATFORM)/$(ARCH)..."
 ifeq ($(OS),Windows_NT)
 	@$(POWERSHELL) "New-Item -ItemType Directory -Force -Path '$(BUILD_DIR)' | Out-Null"
@@ -221,29 +225,8 @@ else
 endif
 	@echo "Build complete: $(BUILD_DIR)/$(BINARY_NAME)$(EXT)"
 
-## build-launcher: Build the clawy-launcher (web console) binary
-build-launcher:
-	@echo "Building clawy-launcher for $(PLATFORM)/$(ARCH)..."
-ifeq ($(OS),Windows_NT)
-	@$(POWERSHELL) "New-Item -ItemType Directory -Force -Path '$(BUILD_DIR)' | Out-Null"
-	@$(MAKE) -C clients/web build PLATFORM="$(PLATFORM)" ARCH="$(ARCH)" EXT="$(EXT)" OUTPUT="$(CURDIR)/$(BUILD_DIR)/clawy-launcher-$(PLATFORM)-$(ARCH)$(EXT)" GO_BUILD_TAGS="$(GO_BUILD_TAGS)"
-	@$(POWERSHELL) "Copy-Item -LiteralPath '$(BUILD_DIR)/clawy-launcher-$(PLATFORM)-$(ARCH)$(EXT)' -Destination '$(BUILD_DIR)/clawy-launcher$(EXT)' -Force"
-else
-	@mkdir -p $(BUILD_DIR)
-	@GOOS=$(PLATFORM) GOARCH=$(ARCH) $(MAKE) -C clients/web build \
-		OUTPUT="$(CURDIR)/$(BUILD_DIR)/clawy-launcher-$(PLATFORM)-$(ARCH)$(EXT)" \
-		WEB_GO='$(WEB_GO)' \
-		GO_BUILD_TAGS='$(GO_BUILD_TAGS)' \
-		LDFLAGS='$(LDFLAGS)'
-	@$(LNCMD) clawy-launcher-$(PLATFORM)-$(ARCH)$(EXT) $(BUILD_DIR)/clawy-launcher$(EXT)
-endif
-	@echo "Build complete: $(BUILD_DIR)/clawy-launcher$(EXT)"
-
-build-launcher-frontend:
-	@$(MAKE) -C clients/web build-frontend
-
 ## build-whatsapp-native: Build with WhatsApp native (whatsmeow) support; larger binary
-build-whatsapp-native: generate
+build-whatsapp-native: generate build-web
 ## @echo "Building $(BINARY_NAME) with WhatsApp native for $(PLATFORM)/$(ARCH)..."
 	@echo "Building for multiple platforms..."
 	@mkdir -p $(BUILD_DIR)
@@ -261,21 +244,21 @@ build-whatsapp-native: generate
 ##	@ln -sf $(BINARY_NAME)-$(PLATFORM)-$(ARCH) $(BUILD_DIR)/$(BINARY_NAME)
 
 ## build-linux-arm: Build for Linux ARMv7 (e.g. Raspberry Pi Zero 2 W 32-bit)
-build-linux-arm: generate
+build-linux-arm: generate build-web
 	@echo "Building for linux/arm (GOARM=7)..."
 	@mkdir -p $(BUILD_DIR)
 	GOOS=linux GOARCH=arm GOARM=7 $(GO) build $(GOFLAGS) -ldflags "$(LDFLAGS)" -o $(BUILD_DIR)/$(BINARY_NAME)-linux-arm ./$(CMD_DIR)
 	@echo "Build complete: $(BUILD_DIR)/$(BINARY_NAME)-linux-arm"
 
 ## build-linux-arm64: Build for Linux ARM64 (e.g. Raspberry Pi Zero 2 W 64-bit)
-build-linux-arm64: generate
+build-linux-arm64: generate build-web
 	@echo "Building for linux/arm64..."
 	@mkdir -p $(BUILD_DIR)
 	GOOS=linux GOARCH=arm64 $(GO) build $(GOFLAGS) -ldflags "$(LDFLAGS)" -o $(BUILD_DIR)/$(BINARY_NAME)-linux-arm64 ./$(CMD_DIR)
 	@echo "Build complete: $(BUILD_DIR)/$(BINARY_NAME)-linux-arm64"
 
 ## build-linux-mipsle: Build for Linux MIPS32 LE
-build-linux-mipsle: generate
+build-linux-mipsle: generate build-web
 	@echo "Building for linux/mipsle (softfloat)..."
 	@mkdir -p $(BUILD_DIR)
 	GOOS=linux GOARCH=mipsle GOMIPS=softfloat $(GO) build $(GOFLAGS_NO_GOOLM) -ldflags "$(LDFLAGS)" -o $(BUILD_DIR)/$(BINARY_NAME)-linux-mipsle ./$(CMD_DIR)
@@ -283,34 +266,21 @@ build-linux-mipsle: generate
 	@echo "Build complete: $(BUILD_DIR)/$(BINARY_NAME)-linux-mipsle"
 
 ## build-android-arm64: Build core for Android ARM64
-build-android-arm64: generate
+build-android-arm64: generate build-web
 	@echo "Building for android/arm64..."
 	@mkdir -p $(BUILD_DIR)
 	GOOS=android GOARCH=arm64 $(GO) build -tags stdjson -ldflags "$(LDFLAGS)" -o $(BUILD_DIR)/$(BINARY_NAME)-android-arm64 ./$(CMD_DIR)
 	@echo "Build complete: $(BUILD_DIR)/$(BINARY_NAME)-android-arm64"
 
-## build-launcher-android-arm64: Build launcher for Android ARM64
-build-launcher-android-arm64:
-	@echo "Building clawy-launcher for android/arm64..."
-	@mkdir -p $(BUILD_DIR)
-	@$(MAKE) -C clients/web build-android-arm64 \
-		OUTPUT_ANDROID_ARM64="$(CURDIR)/$(BUILD_DIR)/clawy-launcher-android-arm64" \
-		GO='$(GO)' \
-		LDFLAGS='$(LDFLAGS)'
-	@echo "Build complete: $(BUILD_DIR)/clawy-launcher-android-arm64"
-
-## build-android-bundle: Build core and launcher for all Android architectures and package as universal zip
-build-android-bundle: generate
+## build-android-bundle: Package the single Clawy executable for Android
+build-android-bundle: generate build-web
 	@echo "Building core for all Android architectures..."
 	@mkdir -p $(BUILD_DIR)
 	GOOS=android GOARCH=arm64 $(GO) build -tags stdjson -ldflags "$(LDFLAGS)" -o $(BUILD_DIR)/$(BINARY_NAME)-android-arm64 ./$(CMD_DIR)
-	@echo "Building launcher for Android arm64..."
-	@$(MAKE) build-launcher-android-arm64
 	@echo "Staging JNI libs..."
 	@rm -rf $(BUILD_DIR)/android-staging
 	@mkdir -p $(BUILD_DIR)/android-staging/arm64-v8a
 	@cp $(BUILD_DIR)/$(BINARY_NAME)-android-arm64 $(BUILD_DIR)/android-staging/arm64-v8a/libclawy.so
-	@cp $(BUILD_DIR)/clawy-launcher-android-arm64 $(BUILD_DIR)/android-staging/arm64-v8a/libclawy-web.so
 	@cd $(BUILD_DIR)/android-staging && zip -r ../clawy-android-universal.zip .
 	@rm -rf $(BUILD_DIR)/android-staging
 	@echo "All Android builds complete: $(BUILD_DIR)/clawy-android-universal.zip"
@@ -320,7 +290,7 @@ build-pi-zero: build-linux-arm build-linux-arm64
 	@echo "Pi Zero 2 W builds: $(BUILD_DIR)/$(BINARY_NAME)-linux-arm (32-bit), $(BUILD_DIR)/$(BINARY_NAME)-linux-arm64 (64-bit)"
 
 ## build-all: Build the clawy core binary for all Makefile-managed platforms
-build-all: generate
+build-all: generate build-web
 	@echo "Building for multiple platforms..."
 	@mkdir -p $(BUILD_DIR)
 	GOOS=linux GOARCH=amd64 $(GO) build $(GOFLAGS) -ldflags "$(LDFLAGS)" -o $(BUILD_DIR)/$(BINARY_NAME)-linux-amd64 ./$(CMD_DIR)
@@ -378,7 +348,7 @@ endif
 vet: generate
 	@packages="$$($(GO) list $(GOFLAGS) ./...)" && \
 		$(GO) vet $(GOFLAGS) $$(printf '%s\n' "$$packages" | grep -v '^github.com/Kantemba/clawy/clients/web/')
-	@cd clients/web/backend && $(WEB_GO) vet ./...
+	@cd clients/web/backend && $(WEB_GO) vet -tags $(GO_BUILD_TAGS) ./...
 
 ## test: Test Go code
 test: generate
@@ -463,7 +433,7 @@ docker-clean:
 
 
 ## build-macos-app: Build Clawy macOS .app bundle (no terminal window)
-build-macos-app:build-launcher
+build-macos-app: build
 	@echo "Building macOS .app bundle..."
 	@if [ "$(UNAME_S)" != "Darwin" ]; then \
 		echo "Error: This target is only available on macOS"; \

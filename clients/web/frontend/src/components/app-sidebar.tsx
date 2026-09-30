@@ -1,6 +1,7 @@
 import { IconChevronRight } from "@tabler/icons-react"
 import {
   IconAtom,
+  IconCalendarClock,
   IconChevronsDown,
   IconChevronsUp,
   IconKey,
@@ -94,6 +95,12 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         ...baseNavGroups[0],
         items: [
           {
+            title: "onboarding.title",
+            url: "/setup",
+            icon: IconListDetails,
+            translateTitle: true,
+          },
+          {
             title: "navigation.chat",
             url: "/",
             icon: IconMessageCircle,
@@ -148,6 +155,12 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             title: "navigation.tools",
             url: "/agent/tools",
             icon: IconTools,
+            translateTitle: true,
+          },
+          {
+            title: "navigation.jobs",
+            url: "/agent/jobs",
+            icon: IconCalendarClock,
             translateTitle: true,
           },
         ],

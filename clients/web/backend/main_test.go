@@ -1,4 +1,4 @@
-package main
+package webconsole
 
 import (
 	"context"
@@ -11,10 +11,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Kantemba/clawy/pkg/logger"
-	"github.com/Kantemba/clawy/pkg/netbind"
 	"github.com/Kantemba/clawy/clients/web/backend/launcherconfig"
 	"github.com/Kantemba/clawy/clients/web/backend/middleware"
+	"github.com/Kantemba/clawy/pkg/logger"
+	"github.com/Kantemba/clawy/pkg/netbind"
 )
 
 func TestShouldEnableLauncherFileLogging(t *testing.T) {

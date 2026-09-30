@@ -1,5 +1,5 @@
 #!/bin/bash
-# Build macOS .app bundle for Clawy Launcher
+# Build macOS .app bundle containing the single Clawy executable.
 
 set -e
 
@@ -11,16 +11,15 @@ if [ -z "$EXECUTABLE" ]; then
     exit 1
 fi
 
-LAUNCHER_EXECUTABLE="clawy-launcher-${EXECUTABLE}"
 EXECUTABLE="clawy-${EXECUTABLE}"
 echo "executable: $EXECUTABLE"
 
-APP_NAME="Clawy Launcher"
+APP_NAME="Clawy"
 APP_PATH="./build/${APP_NAME}.app"
 APP_CONTENTS="${APP_PATH}/Contents"
 APP_MACOS="${APP_CONTENTS}/MacOS"
 APP_RESOURCES="${APP_CONTENTS}/Resources"
-APP_EXECUTABLE="clawy-launcher"
+APP_EXECUTABLE="clawy"
 ICON_SOURCE="./scripts/icon.icns"
 
 # Clean up existing .app
@@ -36,15 +35,8 @@ mkdir -p "$APP_RESOURCES"
 
 # Copy executable
 echo "Copying executable..."
-if [ -f "./build/${LAUNCHER_EXECUTABLE}" ]; then
-    cp "./build/${LAUNCHER_EXECUTABLE}" "${APP_MACOS}/${APP_EXECUTABLE}"
-else
-    echo "Error: ./build/${LAUNCHER_EXECUTABLE} not found. Please build the web backend first."
-    echo "Run: make build-launcher"
-    exit 1
-fi
 if [ -f "./build/${EXECUTABLE}" ]; then
-    cp "./build/${EXECUTABLE}" "${APP_MACOS}/clawy"
+    cp "./build/${EXECUTABLE}" "${APP_MACOS}/${APP_EXECUTABLE}"
 else
     echo "Error: ./build/${EXECUTABLE} not found. Please build the main file first."
     echo "Run: make build"
@@ -60,13 +52,13 @@ cat > "${APP_CONTENTS}/Info.plist" << 'EOF'
 <plist version="1.0">
 <dict>
     <key>CFBundleExecutable</key>
-    <string>clawy-launcher</string>
+    <string>clawy</string>
     <key>CFBundleIdentifier</key>
-    <string>com.clawy.launcher</string>
+    <string>com.clawy.app</string>
     <key>CFBundleName</key>
-    <string>Clawy Launcher</string>
+    <string>Clawy</string>
     <key>CFBundleDisplayName</key>
-    <string>Clawy Launcher</string>
+    <string>Clawy</string>
     <key>CFBundleIconFile</key>
     <string>icon.icns</string>
     <key>CFBundlePackageType</key>
@@ -127,5 +119,5 @@ echo "To launch Clawy:"
 echo "  1. Double-click ${APP_NAME}.app in Finder"
 echo "  2. Or use: open ${APP_PATH}"
 echo ""
-echo "Note: The app will run in the menu bar (systray) without a terminal window."
+echo "The same Clawy executable opens the web console in your browser."
 echo ""

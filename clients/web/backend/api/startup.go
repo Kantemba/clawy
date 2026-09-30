@@ -89,9 +89,9 @@ func (h *Handler) resolveLaunchCommand() (string, []string, error) {
 		return "", nil, err
 	}
 
-	args := []string{"-no-browser"}
+	args := []string{"start", "--no-browser"}
 	if h.debug {
-		args = append(args, "-d")
+		args = append(args, "--debug")
 	}
 	if h.configPath != "" {
 		args = append(args, h.configPath)

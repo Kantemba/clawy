@@ -25,6 +25,9 @@ services:
   #   docker compose -f docker/docker-compose.yml --profile gateway up
   # ─────────────────────────────────────────────
   clawy-gateway:
+    command: ["gateway"]
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:18790/health"]
     build:
       context: ..
       dockerfile: docker/Dockerfile
@@ -40,23 +43,21 @@ services:
       - ./data:/root/.clawy
 
   # ─────────────────────────────────────────────
-  # Clawy Launcher (Web Console + Gateway)
-  #   docker compose -f docker/docker-compose.yml --profile launcher up
+  # Clawy Web Console + Gateway (one executable)
+  #   docker compose -f docker/docker-compose.yml --profile web up
   # ─────────────────────────────────────────────
-  clawy-launcher:
+  clawy-web:
     build:
       context: ..
-      dockerfile: docker/Dockerfile.launcher
-    image: docker.io/Kantemba/clawy:launcher
-    container_name: clawy-launcher
+      dockerfile: docker/Dockerfile
+    image: docker.io/Kantemba/clawy:latest
+    container_name: clawy-web
     restart: unless-stopped
     profiles:
-      - launcher
+      - web
     environment:
       - CLAWY_GATEWAY_HOST=0.0.0.0
-      # Set a fixed dashboard token instead of a random one each restart.
-      # If not set, a random token is generated and printed to the console on startup.
-      #- CLAWY_LAUNCHER_TOKEN=your-secret-token-here
+      # Dashboard password is created in the browser on first run.
     ports:
       - "18800:18800"
       - "18790:18790"

@@ -8,6 +8,7 @@
     "hub": "Hub",
     "skills": "Skills",
     "tools": "Ferramentas",
+    "jobs": "Tarefas",
     "services": "Serviços",
     "channels_group": "Canais",
     "show_more_channels": "Mais",
@@ -941,6 +942,46 @@
       "log_level_error": "Falha ao atualizar nível de log.",
       "clear": "Limpar logs",
       "empty": "Aguardando logs..."
+    },
+    "jobs": {
+      "description": "Tarefas agendadas e recorrentes criadas pelo agente. Os status são atualizados automaticamente.",
+      "refresh": "Atualizar",
+      "retry": "Tentar novamente",
+      "loading": "Carregando tarefas...",
+      "load_error": "Falha ao carregar as tarefas.",
+      "empty": "Nenhuma tarefa agendada ainda",
+      "empty_hint": "Peça ao agente para agendar um lembrete ou uma tarefa recorrente e ela aparecerá aqui com o status.",
+      "no_summary": "Nenhuma mensagem configurada para esta tarefa.",
+      "cron_disabled_title": "Ferramenta cron desativada",
+      "cron_disabled": "As tarefas agendadas não serão executadas até que a ferramenta cron seja ativada na página de Ferramentas.",
+      "last_error": "Último erro",
+      "never_ran": "Ainda não executou",
+      "no_next_run": "Sem próxima execução",
+      "stats": {
+        "total": "Total",
+        "active": "Ativas",
+        "errors": "Falhas",
+        "next": "Próxima execução"
+      },
+      "status": {
+        "ok": "OK",
+        "error": "Falhou",
+        "due": "Pendente",
+        "scheduled": "Agendada",
+        "disabled": "Pausada"
+      },
+      "labels": {
+        "schedule": "Agenda",
+        "next_run": "Próxima execução",
+        "last_run": "Última execução",
+        "target": "Destino"
+      },
+      "schedule": {
+        "once": "Única",
+        "every": "A cada {{interval}}",
+        "cron": "Cron {{expr}}",
+        "unknown": "Agenda desconhecida"
+      }
     }
   },
   "tour": {

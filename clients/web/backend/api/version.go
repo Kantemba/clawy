@@ -74,7 +74,7 @@ func (h *Handler) handleGetVersion(w http.ResponseWriter, r *http.Request) {
 }
 
 // resolveSystemVersionInfo prefers the actual clawy binary version output,
-// and falls back to launcher build metadata when command execution fails.
+// and falls back to this executable's build metadata when command execution fails.
 func (h *Handler) resolveSystemVersionInfo(ctx context.Context) systemVersionResponse {
 	for range maxVersionResolveAttempts {
 		gatewayPID, gatewayAlive := currentGatewayVersionState()
@@ -148,8 +148,8 @@ func fallbackSystemVersionInfoFromConfig() systemVersionResponse {
 	}
 }
 
-// resolveGatewayBinaryForVersionInfo uses the same executable as the launcher
-// gateway start path when available, then falls back to launcher binary lookup.
+// resolveGatewayBinaryForVersionInfo uses the current gateway executable when
+// available, then falls back to this same Clawy executable.
 // This keeps version probing aligned with the actual gateway startup behavior,
 // so web and gateway do not drift onto different binaries.
 func resolveGatewayBinaryForVersionInfo() string {

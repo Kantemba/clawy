@@ -212,6 +212,17 @@ func TestLauncherAuthInitialSetupAllowsDirectSetup(t *testing.T) {
 	if rec.Code != http.StatusOK {
 		t.Fatalf("setup without grant code = %d body=%s", rec.Code, rec.Body.String())
 	}
+	cookies := rec.Result().Cookies()
+	if len(cookies) != 1 || cookies[0].Name != middleware.LauncherDashboardCookieName || !cookies[0].HttpOnly {
+		t.Fatalf("setup must establish an HttpOnly session: %#v", cookies)
+	}
+	statusReq := httptest.NewRequest(http.MethodGet, "/api/auth/status", nil)
+	statusReq.AddCookie(cookies[0])
+	statusRec := httptest.NewRecorder()
+	mux.ServeHTTP(statusRec, statusReq)
+	if statusRec.Code != http.StatusOK || !strings.Contains(statusRec.Body.String(), `"authenticated":true`) {
+		t.Fatalf("setup session is not authenticated: %d %s", statusRec.Code, statusRec.Body.String())
+	}
 }
 
 func TestLauncherAuthStoreUnavailableFailsClosed(t *testing.T) {

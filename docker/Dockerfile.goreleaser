@@ -9,4 +9,6 @@ COPY docker/entrypoint.sh /entrypoint.sh
 
 RUN chmod +x /entrypoint.sh
 
+EXPOSE 18800
 ENTRYPOINT ["/entrypoint.sh"]
+CMD ["start", "--public", "--no-browser"]

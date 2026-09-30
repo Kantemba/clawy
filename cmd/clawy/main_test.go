@@ -31,7 +31,7 @@ func TestNewClawyCommand(t *testing.T) {
 	assert.True(t, cmd.PersistentFlags().Lookup("no-color") != nil)
 
 	assert.Nil(t, cmd.Run)
-	assert.Nil(t, cmd.RunE)
+	assert.NotNil(t, cmd.RunE)
 
 	assert.NotNil(t, cmd.PersistentPreRun)
 	assert.Nil(t, cmd.PersistentPostRun)
@@ -49,6 +49,7 @@ func TestNewClawyCommand(t *testing.T) {
 		"pairing",
 		"plugin",
 		"skills",
+		"start",
 		"status",
 		"update",
 		"version",

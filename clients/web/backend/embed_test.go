@@ -1,4 +1,4 @@
-package main
+package webconsole
 
 import (
 	"net/http"

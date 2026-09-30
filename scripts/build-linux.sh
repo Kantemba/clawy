@@ -40,11 +40,12 @@ LDFLAGS="-X ${CONFIG_PKG}.Version=${VERSION} \
 -X ${CONFIG_PKG}.BuildTime=${BUILD_TIME} \
 -X ${CONFIG_PKG}.GoVersion=${GO_VERSION} -s -w"
 
+bash scripts/build-web.sh
 mkdir -p "${BUILD_DIR}"
 
 build_linux() {
     local arch="$1"
-    local goarm="$2"
+    local goarm="${2:-}"
     local out="${BUILD_DIR}/${BINARY_NAME}-linux-${arch}"
     local env_prefix="CGO_ENABLED=0 GOOS=linux GOARCH=${arch}"
     [ -n "${goarm}" ] && env_prefix="${env_prefix} GOARM=${goarm}"

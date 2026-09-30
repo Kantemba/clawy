@@ -3,18 +3,13 @@
 // Provides a web UI for chatting with Clawy via the Pico Channel WebSocket,
 // with configuration management and gateway process control.
 //
-// Usage:
-//
-//	go build -o clawy-web ./web/backend/
-//	./clawy-web [config.json]
-//	./clawy-web -public config.json
+// The web console is embedded in the Clawy executable and started by clawy start.
 
-package main
+package webconsole
 
 import (
 	"context"
 	"errors"
-	"flag"
 	"fmt"
 	"net"
 	"net/http"
@@ -23,17 +18,18 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 
-	"github.com/Kantemba/clawy/pkg/config"
-	"github.com/Kantemba/clawy/pkg/logger"
-	"github.com/Kantemba/clawy/pkg/netbind"
 	"github.com/Kantemba/clawy/clients/web/backend/api"
 	"github.com/Kantemba/clawy/clients/web/backend/dashboardauth"
 	"github.com/Kantemba/clawy/clients/web/backend/launcherconfig"
 	"github.com/Kantemba/clawy/clients/web/backend/middleware"
 	"github.com/Kantemba/clawy/clients/web/backend/utils"
+	"github.com/Kantemba/clawy/pkg/config"
+	"github.com/Kantemba/clawy/pkg/logger"
+	"github.com/Kantemba/clawy/pkg/netbind"
 )
 
 const (
@@ -53,8 +49,24 @@ var (
 	browserLaunchURL string
 	apiHandler       *api.Handler
 
-	noBrowser *bool
+	runMu sync.Mutex
 )
+
+// Options configures the embedded web console. Explicit flags override saved
+// launcher-config.json settings; the existing file name is retained for upgrades.
+type Options struct {
+	ConfigPath string
+	Port       string
+	Host       string
+	Public     bool
+	NoBrowser  bool
+	Console    bool
+	Debug      bool
+	Language   string
+	PortSet    bool
+	HostSet    bool
+	PublicSet  bool
+}
 
 func shouldEnableLauncherFileLogging(enableConsole, debug bool) bool {
 	return !enableConsole || debug
@@ -397,42 +409,35 @@ func launcherAllowlistBypassLogPolicy(
 	return launcherAllowlistBypassLogDecision{}
 }
 
-func main() {
-	port := flag.String("port", "18800", "Port to listen on")
-	host := flag.String("host", "", "Host to listen on (overrides -public when set)")
-	public := flag.Bool("public", false, "Listen on all interfaces (dual-stack) instead of localhost only")
-	noBrowser = flag.Bool("no-browser", false, "Do not auto-open browser on startup")
-	lang := flag.String("lang", "", "Language: en (English) or zh (Chinese). Default: auto-detect from system locale")
-	console := flag.Bool("console", false, "Console mode, no GUI")
-
-	var debug bool
-	flag.BoolVar(&debug, "d", false, "Enable debug logging")
-	flag.BoolVar(&debug, "debug", false, "Enable debug logging")
-
-	flag.Usage = func() {
-		fmt.Fprintf(os.Stderr, "%s Launcher - Web console and gateway manager\n\n", appName)
-		fmt.Fprintf(os.Stderr, "Usage: %s [options] [config.json]\n\n", os.Args[0])
-		fmt.Fprintf(os.Stderr, "Arguments:\n")
-		fmt.Fprintf(os.Stderr, "  config.json    Path to the configuration file (default: ~/.clawy/config.json)\n\n")
-		fmt.Fprintf(os.Stderr, "Options:\n")
-		flag.PrintDefaults()
-		fmt.Fprintf(os.Stderr, "\nExamples:\n")
-		fmt.Fprintf(os.Stderr, "  %s\n", os.Args[0])
-		fmt.Fprintf(os.Stderr, "      Use default config path in GUI mode\n")
-		fmt.Fprintf(os.Stderr, "  %s ./config.json\n", os.Args[0])
-		fmt.Fprintf(os.Stderr, "      Specify a config file\n")
-		fmt.Fprintf(
-			os.Stderr,
-			"  %s -public ./config.json\n",
-			os.Args[0],
-		)
-		fmt.Fprintf(os.Stderr, "      Allow access from other devices on the local network\n")
-		fmt.Fprintf(os.Stderr, "  %s -host :: ./config.json\n", os.Args[0])
-		fmt.Fprintf(os.Stderr, "      Bind launcher host explicitly with exact host semantics\n")
-		fmt.Fprintf(os.Stderr, "  %s -console -d ./config.json\n", os.Args[0])
-		fmt.Fprintf(os.Stderr, "      Run in the terminal with debug logs enabled\n")
+// Run serves the embedded UI and API in this process until cancellation or an
+// interrupt. The gateway may run as a child of this same executable; no second
+// binary is installed or looked up.
+func Run(ctx context.Context, opts Options) error {
+	if !runMu.TryLock() {
+		return errors.New("web console is already running")
 	}
-	flag.Parse()
+	defer runMu.Unlock()
+	defer func() {
+		servers = nil
+		apiHandler = nil
+		serverAddr = ""
+		browserLaunchURL = ""
+	}()
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	if opts.Port == "" {
+		opts.Port = "18800"
+	}
+	port, host, public := &opts.Port, &opts.Host, &opts.Public
+	noBrowser, console, lang := &opts.NoBrowser, &opts.Console, &opts.Language
+	debug := opts.Debug
+	ctx, stop := signal.NotifyContext(ctx, os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
+	if _, err := frontendFS.ReadFile("dist/index.html"); err != nil {
+		return fmt.Errorf("embedded web UI is missing; build Clawy with scripts/build-native.sh: %w", err)
+	}
 
 	// Initialize logger
 	picoHome := utils.GetClawyHome()
@@ -440,7 +445,7 @@ func main() {
 	f := filepath.Join(picoHome, logPath, panicFile)
 	panicFunc, err := logger.InitPanic(f)
 	if err != nil {
-		panic(fmt.Sprintf("error initializing panic log: %v", err))
+		return fmt.Errorf("initialize web console panic log: %w", err)
 	}
 	defer panicFunc()
 
@@ -454,7 +459,7 @@ func main() {
 
 		f := filepath.Join(picoHome, logPath, logFile)
 		if err = logger.EnableFileLogging(f); err != nil {
-			panic(fmt.Sprintf("error enabling file logging: %v", err))
+			return fmt.Errorf("enable web console file logging: %w", err)
 		}
 		defer logger.DisableFileLogging()
 	}
@@ -469,23 +474,23 @@ func main() {
 
 	// Resolve config path
 	configPath := utils.GetDefaultConfigPath()
-	if flag.NArg() > 0 {
-		configPath = flag.Arg(0)
+	if opts.ConfigPath != "" {
+		configPath = opts.ConfigPath
 	}
 
 	absPath, err := filepath.Abs(configPath)
 	if err != nil {
-		logger.Fatalf("Failed to resolve config path: %v", err)
+		return fmt.Errorf("resolve config path: %w", err)
 	}
 	err = utils.EnsureOnboarded(absPath)
 	if err != nil {
-		logger.Errorf("Warning: Failed to initialize %s config automatically: %v", appName, err)
+		return fmt.Errorf("initialize Clawy config: %w", err)
 	}
 	if !debug {
 		logger.SetLevelFromString(config.ResolveGatewayLogLevel(absPath))
 	}
 
-	logger.InfoC("web", fmt.Sprintf("%s launcher starting (version %s)...", appName, appVersion))
+	logger.InfoC("web", fmt.Sprintf("%s web console starting (version %s)...", appName, appVersion))
 	logger.InfoC("web", fmt.Sprintf("%s Home: %s", appName, picoHome))
 	if debug {
 		logger.InfoC("web", "Debug mode enabled")
@@ -502,19 +507,7 @@ func main() {
 		)
 	}
 
-	var explicitPort bool
-	var explicitPublic bool
-	var explicitHost bool
-	flag.Visit(func(f *flag.Flag) {
-		switch f.Name {
-		case "port":
-			explicitPort = true
-		case "host":
-			explicitHost = true
-		case "public":
-			explicitPublic = true
-		}
-	})
+	explicitPort, explicitPublic, explicitHost := opts.PortSet, opts.PublicSet, opts.HostSet
 
 	launcherPath := launcherconfig.PathForAppConfig(absPath)
 	launcherCfg, err := launcherconfig.Load(launcherPath, launcherconfig.Default())
@@ -535,7 +528,7 @@ func main() {
 
 	hostInput, hostOverrideActive, err := resolveLauncherHostInput(*host, explicitHost, envHost)
 	if err != nil {
-		logger.Fatalf("Invalid host %q: %v", firstNonEmpty(strings.TrimSpace(*host), envHost), err)
+		return fmt.Errorf("invalid host %q: %w", firstNonEmpty(strings.TrimSpace(*host), envHost), err)
 	}
 	if hostOverrideActive {
 		effectivePublic = false
@@ -563,18 +556,23 @@ func main() {
 		if err == nil {
 			err = errors.New("must be in range 1-65535")
 		}
-		logger.Fatalf("Invalid port %q: %v", effectivePort, err)
+		return fmt.Errorf("invalid port %q: %w", effectivePort, err)
 	}
 
 	openResult, err := openLauncherListeners(hostInput, effectivePublic, effectivePort)
 	if err != nil {
-		logger.Fatalf("Failed to open launcher listener(s): %v", err)
+		return fmt.Errorf("open web console listener(s): %w", err)
 	}
 	listeners := openResult.Listeners
+	defer func() {
+		for _, ln := range listeners {
+			_ = ln.Close()
+		}
+	}()
 
 	dashboardSessionCookie, dashErr := middleware.NewLauncherDashboardSessionCookie()
 	if dashErr != nil {
-		logger.Fatalf("Dashboard auth setup failed: %v", dashErr)
+		return fmt.Errorf("dashboard auth setup: %w", dashErr)
 	}
 
 	// Open the bcrypt password store (creates the DB file on first run).
@@ -604,7 +602,7 @@ func main() {
 		launcherCfg,
 	)
 	if migrationErr != nil {
-		logger.Fatalf("Failed to migrate legacy launcher token to password login: %v", migrationErr)
+		return fmt.Errorf("migrate legacy dashboard token: %w", migrationErr)
 	}
 	if migrationResult.Migrated {
 		logger.InfoC("web", "Migrated legacy launcher token to dashboard password login")
@@ -631,7 +629,7 @@ func main() {
 		} else if shouldEnableLocalAutoLogin(*noBrowser, openResult.ProbeHost) {
 			localAutoLogin, err = middleware.NewLauncherDashboardLocalAutoLogin(5 * time.Minute)
 			if err != nil {
-				logger.Fatalf("Failed to create local auto-login grant: %v", err)
+				return fmt.Errorf("create local auto-login grant: %w", err)
 			}
 		}
 	}
@@ -647,6 +645,7 @@ func main() {
 
 	// API Routes (e.g. /api/status)
 	apiHandler = api.NewHandler(absPath)
+	defer shutdownApp()
 	apiHandler.SetDebug(debug)
 	if _, err = apiHandler.EnsurePicoChannel(); err != nil {
 		logger.ErrorC("web", fmt.Sprintf("Warning: failed to ensure pico channel on startup: %v", err))
@@ -668,7 +667,7 @@ func main() {
 		TrustedProxyCIDRs:    launcherCfg.TrustedProxyCIDRs,
 	}, mux)
 	if err != nil {
-		logger.Fatalf("Invalid allowed CIDR configuration: %v", err)
+		return fmt.Errorf("invalid allowed CIDR configuration: %w", err)
 	}
 
 	dashAuth := middleware.LauncherDashboardAuth(middleware.LauncherDashboardAuthConfig{
@@ -695,7 +694,7 @@ func main() {
 			if *noBrowser {
 				fmt.Println("  First-time setup: open /launcher-setup to create the dashboard password.")
 			} else {
-				fmt.Println("  Launcher will open /launcher-setup automatically.")
+				fmt.Println("  Clawy will open /launcher-setup automatically.")
 			}
 			fmt.Println()
 		}
@@ -723,11 +722,25 @@ func main() {
 
 	// Auto-open browser will be handled by the launcher runtime.
 
-	// Auto-start gateway after backend starts listening.
+	// Cancel delayed startup and wait for any in-progress start before shutdown,
+	// so cancellation can never leave a gateway started after cleanup.
+	startupCtx, cancelStartup := context.WithCancel(ctx)
+	startupDone := make(chan struct{})
 	go func() {
-		time.Sleep(1 * time.Second)
-		apiHandler.TryAutoStartGateway()
+		defer close(startupDone)
+		timer := time.NewTimer(time.Second)
+		defer timer.Stop()
+		select {
+		case <-startupCtx.Done():
+			return
+		case <-timer.C:
+			if startupCtx.Err() == nil {
+				apiHandler.TryAutoStartGateway()
+			}
+		}
 	}()
+	defer func() { cancelStartup(); <-startupDone }()
+	serveErrors := make(chan error, len(listeners))
 
 	// Start the server(s) in goroutines.
 	servers = make([]*http.Server, 0, len(listeners))
@@ -738,37 +751,21 @@ func main() {
 		go func(s *http.Server, l net.Listener) {
 			logger.InfoC("web", fmt.Sprintf("Server listening on %s", l.Addr().String()))
 			if serveErr := s.Serve(l); serveErr != nil && !errors.Is(serveErr, http.ErrServerClosed) {
-				logger.Fatalf("Server failed to start on %s: %v", l.Addr().String(), serveErr)
+				serveErrors <- fmt.Errorf("serve web console on %s: %w", l.Addr(), serveErr)
 			}
 		}(srv, ln)
 	}
 
-	defer shutdownApp()
-
-	// Start system tray or run in console mode
-	if enableConsole {
-		if !*noBrowser {
-			// Auto-open browser after systray is ready (if not disabled)
-			// Check no-browser flag via environment or pass as parameter if needed
-			if err := openBrowser(); err != nil {
-				logger.Errorf("Warning: Failed to auto-open browser: %v", err)
-			}
+	if !*noBrowser {
+		if err := openBrowser(); err != nil {
+			logger.Errorf("Warning: Failed to auto-open browser: %v", err)
 		}
-
-		sigChan := make(chan os.Signal, 1)
-		signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
-
-		// Main event loop - wait for signals or config changes
-		for {
-			select {
-			case <-sigChan:
-				logger.Info("Shutting down...")
-
-				return
-			}
-		}
-	} else {
-		// GUI mode: start system tray
-		runTray()
+	}
+	select {
+	case <-ctx.Done():
+		logger.Info("Shutting down...")
+		return nil
+	case err := <-serveErrors:
+		return err
 	}
 }

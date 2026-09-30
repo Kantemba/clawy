@@ -4,14 +4,13 @@
 ;   ISCC.exe /DMyAppVersion=v1.2.3 scripts\setup.iss
 ;
 ; Expected inputs (paths relative to scripts/):
-;   ..\build\clawy-launcher.exe   WebUI launcher (copied from build/clawy-launcher-windows-amd64.exe)
-;   ..\build\clawy.exe            core CLI binary (copied from build/clawy-windows-amd64.exe)
-;   ..\web\backend\icon.ico       application icon
+;   ..\build\clawy.exe            single binary (CLI, web console, and gateway)
+;   ..\clients\web\backend\icon.ico application icon
 
-#define MyAppName "Clawy Launcher"
+#define MyAppName "Clawy"
 #define MyAppPublisher "Kantemba"
 #define MyAppURL "https://github.com/Kantemba/clawy"
-#define MyAppExeName "clawy-launcher.exe"
+#define MyAppExeName "clawy.exe"
 
 ; Allow the version to be injected by the CI via /DMyAppVersion=x.y.z,
 ; falling back to a clearly-marked development value for local builds.
@@ -50,7 +49,7 @@ OutputBaseFilename=ClawySetup-{#MyAppVersion}
 Compression=lzma
 SolidCompression=yes
 WizardStyle=modern
-SetupIconFile=..\web\backend\icon.ico
+SetupIconFile=..\clients\web\backend\icon.ico
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
@@ -59,15 +58,18 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
 
 [Files]
-Source: "..\build\clawy-launcher.exe"; DestDir: "{app}"; DestName: "{#MyAppExeName}"; Flags: ignoreversion
 Source: "..\build\clawy.exe"; DestDir: "{app}"; Flags: ignoreversion
-Source: "..\web\backend\icon.ico"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\clients\web\backend\icon.ico"; DestDir: "{app}"; Flags: ignoreversion
 ; NOTE: Don't use "Flags: ignoreversion" on any shared system files
 
+; Remove the obsolete companion executable when upgrading an old install.
+[InstallDelete]
+Type: files; Name: "{app}\clawy-launcher.exe"
+
 [Icons]
-Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; WorkingDir: "{app}"; IconFilename: "{app}\icon.ico"
+Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Parameters: "start"; WorkingDir: "{app}"; IconFilename: "{app}\icon.ico"
 Name: "{group}\Uninstall {#MyAppName}"; Filename: "{uninstallexe}"
-Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; WorkingDir: "{app}"; Tasks: desktopicon; IconFilename: "{app}\icon.ico"
+Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Parameters: "start"; WorkingDir: "{app}"; Tasks: desktopicon; IconFilename: "{app}\icon.ico"
 
 [Run]
-Filename:"{app}\{#MyAppExeName}"; WorkingDir: "{app}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent
+Filename:"{app}\{#MyAppExeName}"; Parameters: "start"; WorkingDir: "{app}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent

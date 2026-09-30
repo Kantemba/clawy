@@ -8,6 +8,7 @@
     "hub": "Hub",
     "skills": "Dovednosti",
     "tools": "Nástroje",
+    "jobs": "Úlohy",
     "services": "Služby",
     "channels_group": "Kanály",
     "show_more_channels": "Více",
@@ -939,6 +940,46 @@
       "log_level_error": "Aktualizace úrovně logování selhala.",
       "clear": "Vymazat logy",
       "empty": "Čekám na logy..."
+    },
+    "jobs": {
+      "description": "Plánované a opakované úlohy vytvořené agentem. Stav se automaticky obnovuje.",
+      "refresh": "Obnovit",
+      "retry": "Zkusit znovu",
+      "loading": "Načítám úlohy...",
+      "load_error": "Načtení úloh selhalo.",
+      "empty": "Zatím žádné naplánované úlohy",
+      "empty_hint": "Požádejte agenta o naplánování připomínky nebo opakované úlohy a zobrazí se zde včetně stavu.",
+      "no_summary": "Pro tuto úlohu není nastavena zpráva.",
+      "cron_disabled_title": "Nástroj cron je vypnutý",
+      "cron_disabled": "Naplánované úlohy se nespustí, dokud nebude nástroj cron zapnutý na stránce Nástroje.",
+      "last_error": "Poslední chyba",
+      "never_ran": "Zatím nespustila",
+      "no_next_run": "Žádný další běh",
+      "stats": {
+        "total": "Celkem",
+        "active": "Aktivní",
+        "errors": "Chyby",
+        "next": "Další běh"
+      },
+      "status": {
+        "ok": "OK",
+        "error": "Chyba",
+        "due": "Na řadě",
+        "scheduled": "Naplánovaná",
+        "disabled": "Pozastavená"
+      },
+      "labels": {
+        "schedule": "Rozvrh",
+        "next_run": "Další běh",
+        "last_run": "Poslední běh",
+        "target": "Cíl"
+      },
+      "schedule": {
+        "once": "Jednorázová",
+        "every": "Každých {{interval}}",
+        "cron": "Cron {{expr}}",
+        "unknown": "Neznámý rozvrh"
+      }
     }
   },
   "tour": {

@@ -29,14 +29,8 @@ func TestResolveLaunchCommandUsesConfigFileDefaults(t *testing.T) {
 	if exePath == "" {
 		t.Fatal("resolveLaunchCommand() returned empty executable path")
 	}
-	if len(args) != 2 {
-		t.Fatalf("args len = %d, want 2 (got %v)", len(args), args)
-	}
-	if args[0] != "-no-browser" {
-		t.Fatalf("args[0] = %q, want %q", args[0], "-no-browser")
-	}
-	if args[1] != configPath {
-		t.Fatalf("args[1] = %q, want %q", args[1], configPath)
+	if len(args) != 3 || args[0] != "start" || args[1] != "--no-browser" || args[2] != configPath {
+		t.Fatalf("args = %v, want [start --no-browser %s]", args, configPath)
 	}
 	for _, arg := range args {
 		if arg == "-port" || arg == "-public" {
@@ -54,17 +48,8 @@ func TestResolveLaunchCommandIncludesDebugFlagWhenEnabled(t *testing.T) {
 	if err != nil {
 		t.Fatalf("resolveLaunchCommand() error = %v", err)
 	}
-	if len(args) != 3 {
-		t.Fatalf("args len = %d, want 3 (got %v)", len(args), args)
-	}
-	if args[0] != "-no-browser" {
-		t.Fatalf("args[0] = %q, want %q", args[0], "-no-browser")
-	}
-	if args[1] != "-d" {
-		t.Fatalf("args[1] = %q, want %q", args[1], "-d")
-	}
-	if args[2] != configPath {
-		t.Fatalf("args[2] = %q, want %q", args[2], configPath)
+	if len(args) != 4 || args[0] != "start" || args[1] != "--no-browser" || args[2] != "--debug" || args[3] != configPath {
+		t.Fatalf("args = %v, want [start --no-browser --debug %s]", args, configPath)
 	}
 }
 

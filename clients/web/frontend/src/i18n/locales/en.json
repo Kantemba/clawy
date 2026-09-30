@@ -8,12 +8,34 @@
     "hub": "Hub",
     "skills": "Skills",
     "tools": "Tools",
+    "jobs": "Jobs",
     "services": "Services",
     "channels_group": "Channels",
     "show_more_channels": "More",
     "show_less_channels": "Less",
     "config": "Config",
     "logs": "Logs"
+  },
+  "onboarding": {
+    "title": "Set up Clawy",
+    "description": "Everything you need to get started is here in your browser. No config files or CLI commands required. You can return to this checklist any time.",
+    "passwordTitle": "1. Secure your dashboard",
+    "passwordDone": "Done — your dashboard password is set and you are signed in.",
+    "modelTitle": "2. Connect an AI model",
+    "modelDescription": "Add a provider and API key, or connect an account in Credentials. For a local model, enter its server address. Then select a usable default model on the Models page.",
+    "configureModel": "Configure models",
+    "connectAccount": "Connect an account",
+    "checking": "Checking your configuration…",
+    "modelReady": "Your default model is ready.",
+    "modelBlocked": "Still needed: {{reason}}",
+    "checkAgain": "Check again",
+    "channelsTitle": "3. Add a channel (optional)",
+    "channelsDescription": "Browser chat is already configured. Add Telegram or another channel from the sidebar if you want to chat elsewhere. You can do this later.",
+    "configureChannels": "Set up Telegram",
+    "finishTitle": "4. Start chatting",
+    "finishDescription": "Start the gateway once your model is ready. Tools, skills, and other settings can be changed later in the dashboard.",
+    "start": "Start Clawy",
+    "openChat": "Open chat"
   },
   "launcherLogin": {
     "title": "Sign in",
@@ -941,6 +963,46 @@
       "log_level_error": "Failed to update log level.",
       "clear": "Clear logs",
       "empty": "Waiting for logs..."
+    },
+    "jobs": {
+      "description": "Scheduled and recurring tasks created by the agent. Statuses refresh automatically.",
+      "refresh": "Refresh",
+      "retry": "Retry",
+      "loading": "Loading jobs...",
+      "load_error": "Failed to load jobs.",
+      "empty": "No jobs scheduled yet",
+      "empty_hint": "Ask the agent to schedule a reminder or a recurring task and it will appear here with its status.",
+      "no_summary": "No message configured for this job.",
+      "cron_disabled_title": "Cron tool disabled",
+      "cron_disabled": "Scheduled jobs will not run until the cron tool is enabled on the Tools page.",
+      "last_error": "Last error",
+      "never_ran": "Has not run yet",
+      "no_next_run": "No upcoming run",
+      "stats": {
+        "total": "Total",
+        "active": "Active",
+        "errors": "Failed",
+        "next": "Next run"
+      },
+      "status": {
+        "ok": "OK",
+        "error": "Failed",
+        "due": "Due",
+        "scheduled": "Scheduled",
+        "disabled": "Paused"
+      },
+      "labels": {
+        "schedule": "Schedule",
+        "next_run": "Next run",
+        "last_run": "Last run",
+        "target": "Target"
+      },
+      "schedule": {
+        "once": "One-time",
+        "every": "Every {{interval}}",
+        "cron": "Cron {{expr}}",
+        "unknown": "Unknown schedule"
+      }
     }
   },
   "tour": {

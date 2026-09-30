@@ -1,4 +1,4 @@
-package main
+package webconsole
 
 import (
 	"context"
@@ -6,12 +6,11 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/Kantemba/clawy/pkg/logger"
 	"github.com/Kantemba/clawy/clients/web/backend/utils"
+	"github.com/Kantemba/clawy/pkg/logger"
 )
 
 const (
-	browserDelay    = 500 * time.Millisecond
 	shutdownTimeout = 15 * time.Second
 )
 

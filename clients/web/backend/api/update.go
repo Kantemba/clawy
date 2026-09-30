@@ -64,10 +64,13 @@ func (h *Handler) handleUpdate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	binary := req.Binary
-	if binary == "" {
-		binary = "clawy-launcher"
+	// There is only one installable binary, including the web console.
+	if req.Binary != "" && req.Binary != "clawy" {
+		w.WriteHeader(http.StatusBadRequest)
+		_ = json.NewEncoder(w).Encode(updateResponse{Status: "error", Message: "only the clawy binary can be updated"})
+		return
 	}
+	binary := "clawy"
 
 	if err := updater.UpdateSelfFromRelease(req.URL, "", "", binary); err != nil {
 		w.WriteHeader(http.StatusInternalServerError)

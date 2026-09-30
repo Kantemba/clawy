@@ -9,14 +9,12 @@
 # Flags:
 #   --version <tag>   Release tag (default: latest stable)
 #   --dir <path>      Install directory (default: ~/.local/bin)
-#   --no-launcher     Install only the `clawy` CLI, skip clawy-launcher
 #   --help            Show this help
 set -eu
 
 REPO="${CLAWY_REPO:-Kantemba/clawy}"
 VERSION=""
 INSTALL_DIR="${INSTALL_DIR:-$HOME/.local/bin}"
-WITH_LAUNCHER=1
 
 usage() {
   sed -n '2,/^set -eu/p' "$0" | sed 's/^# \{0,1\}//'
@@ -26,7 +24,6 @@ while [ $# -gt 0 ]; do
   case "$1" in
     --version) VERSION="$2"; shift 2 ;;
     --dir) INSTALL_DIR="$2"; shift 2 ;;
-    --no-launcher) WITH_LAUNCHER=0; shift ;;
     -h|--help) usage; exit 0 ;;
     *) echo "Unknown flag: $1" >&2; usage >&2; exit 1 ;;
   esac
@@ -40,7 +37,7 @@ OS="$(uname -s)"
 ARCH="$(uname -m)"
 case "$OS" in
   Linux) GOOS="Linux" ;;
-  Darwin) GOOS="macOS" ;;
+  Darwin) GOOS="Darwin" ;;
   MINGW*|MSYS*|CYGWIN*|Windows_NT) GOOS="Windows" ;;
   *) echo "Unsupported OS: $OS" >&2; exit 1 ;;
 esac
@@ -76,7 +73,7 @@ curl -fsSL --retry 3 -o "$TMPDIR/$ASSET" "$URL"
 # Verify checksum when the release provides checksums.txt.
 if curl -fsSL --retry 2 -o "$TMPDIR/checksums.txt" "https://github.com/${REPO}/releases/download/${VERSION}/checksums.txt" 2>/dev/null; then
   if command -v sha256sum >/dev/null 2>&1; then
-    (cd "$TMPDIR" && sha256sum -c --status <(grep -F "$ASSET" checksums.txt) 2>/dev/null) \
+    (cd "$TMPDIR" && grep -F "$ASSET" checksums.txt | sha256sum -c --status 2>/dev/null) \
       && echo "Checksum OK." \
       || echo "Warning: checksum verification skipped/failed; continuing." >&2
   fi
@@ -102,18 +99,12 @@ install_bin() {
   echo "Installed $INSTALL_DIR/$1"
 }
 
+# The CLI, web console, and gateway are all in this one executable.
 install_bin "clawy${BIN_EXT}"
-if [ "$WITH_LAUNCHER" = "1" ]; then
-  if find "$TMPDIR/extract" -name "clawy-launcher${BIN_EXT}" -type f | grep -q .; then
-    install_bin "clawy-launcher${BIN_EXT}"
-  else
-    echo "Note: clawy-launcher not in this archive; skipping."
-  fi
-fi
 
 echo ""
 echo "Done. Make sure $INSTALL_DIR is on your PATH:"
 echo "  export PATH=\"$INSTALL_DIR:\$PATH\""
 echo ""
-echo "Next: clawy onboard"
+echo "Next: clawy start  (finish setup in your browser)"
 echo "Updates: clawy update --check  (disable notices: CLAWY_NO_UPDATE_CHECK=1)"
