@@ -22,22 +22,18 @@ export function HubPage() {
           <section className="animate-in fade-in mx-auto flex w-full flex-col items-center space-y-8 duration-300 md:duration-500">
             <SearchPanel
               marketQuery={hub.marketQuery}
-              canSearchMarketplace={hub.canSearchMarketplace}
               isMarketSearchInitialLoading={hub.isMarketSearchInitialLoading}
-              unavailableToolMessages={hub.unavailableToolMessages}
               onMarketQueryChange={hub.setMarketQuery}
               onSearchSubmit={hub.handleSearchSubmit}
             />
 
             <ResultsPanel
-              canSearchMarketplace={hub.canSearchMarketplace}
               hasSubmittedQuery={hub.hasSubmittedQuery}
               submittedQuery={hub.submittedMarketQuery}
               marketResults={hub.marketResults}
               marketSearchError={hub.marketSearchError}
               isMarketSearchInitialLoading={hub.isMarketSearchInitialLoading}
               isMarketSearchLoadingMore={hub.isMarketSearchLoadingMore}
-              canInstallFromMarketplace={hub.canInstallFromMarketplace}
               getInstalledSkill={hub.getInstalledSkill}
               isInstallPending={hub.isInstallPending}
               onInstall={hub.handleInstall}

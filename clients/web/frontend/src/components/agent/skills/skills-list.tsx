@@ -2,6 +2,7 @@ import { IconSearch } from "@tabler/icons-react"
 import { useTranslation } from "react-i18next"
 
 import type { SkillSupportItem } from "@/api/skills"
+import { Button } from "@/components/ui/button"
 
 import { OriginBadge } from "./origin-badge"
 import { getOriginLabel } from "./origin-utils"
@@ -16,6 +17,7 @@ interface SkillsListProps {
   hasActiveFilters: boolean
   onViewSkill: (skill: SkillSupportItem) => void
   onDeleteSkill: (skill: SkillSupportItem) => void
+  onFindSkills?: () => void
 }
 
 export function SkillsList({
@@ -26,6 +28,7 @@ export function SkillsList({
   hasActiveFilters,
   onViewSkill,
   onDeleteSkill,
+  onFindSkills,
 }: SkillsListProps) {
   const { t } = useTranslation()
 
@@ -40,6 +43,12 @@ export function SkillsList({
             ? t("pages.agent.skills.no_results")
             : t("pages.agent.skills.empty")}
         </h3>
+        {!hasActiveFilters && onFindSkills ? (
+          <Button variant="outline" onClick={onFindSkills}>
+            <IconSearch className="size-4" />
+            {t("pages.agent.skills.find")}
+          </Button>
+        ) : null}
       </div>
     )
   }

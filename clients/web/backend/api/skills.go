@@ -175,10 +175,9 @@ func (h *Handler) handleSearchSkills(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, fmt.Sprintf("Failed to load config: %v", loadErr), http.StatusInternalServerError)
 		return
 	}
-	if registryErr := ensureSkillRegistryToolEnabled(cfg, "find_skills"); registryErr != nil {
-		http.Error(w, registryErr.Error(), http.StatusBadRequest)
-		return
-	}
+	// Note: the find_skills / install_skill tool switches only gate what the
+	// *agent* may do in chat (pkg/tools). Searching and installing from this
+	// UI is an explicit user action, so it stays available either way.
 
 	query := strings.TrimSpace(r.URL.Query().Get("q"))
 
@@ -288,10 +287,7 @@ func (h *Handler) handleInstallSkill(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, fmt.Sprintf("Failed to load config: %v", loadErr), http.StatusInternalServerError)
 		return
 	}
-	if registryErr := ensureSkillRegistryToolEnabled(cfg, "install_skill"); registryErr != nil {
-		http.Error(w, registryErr.Error(), http.StatusBadRequest)
-		return
-	}
+	// See handleSearchSkills: the agent tool switches do not gate UI installs.
 
 	var req installSkillRequest
 	if decodeErr := json.NewDecoder(r.Body).Decode(&req); decodeErr != nil {
@@ -528,16 +524,6 @@ func newSkillsLoader(workspace string) *skills.SkillsLoader {
 
 func newSkillsRegistryManager(cfg *config.Config) *skills.RegistryManager {
 	return skills.NewRegistryManagerFromToolsConfig(cfg.Tools.Skills)
-}
-
-func ensureSkillRegistryToolEnabled(cfg *config.Config, toolName string) error {
-	if !cfg.Tools.IsToolEnabled("skills") {
-		return fmt.Errorf("tools.skills is disabled")
-	}
-	if !cfg.Tools.IsToolEnabled(toolName) {
-		return fmt.Errorf("%s is disabled", toolName)
-	}
-	return nil
 }
 
 func buildSkillSupportItems(cfg *config.Config) ([]skillSupportItem, error) {

@@ -1,32 +1,19 @@
-import {
-  useInfiniteQuery,
-  useMutation,
-  useQuery,
-  useQueryClient,
-} from "@tanstack/react-query"
+import { useInfiniteQuery, useQuery } from "@tanstack/react-query"
 import { useNavigate } from "@tanstack/react-router"
 import { type UIEvent, useEffect, useRef, useState } from "react"
-import { useTranslation } from "react-i18next"
-import { toast } from "sonner"
 
 import {
-  type SkillRegistrySearchResult,
   type SkillSearchResponse,
   type SkillSupportItem,
   getSkills,
-  installSkill,
   searchSkills,
 } from "@/api/skills"
-import { getTools } from "@/api/tools"
-
-import { buildUnavailableToolMessages } from "./tool-support"
+import { useSkillInstall } from "@/hooks/use-skill-install"
 
 const MARKET_SEARCH_LIMIT = 20
 
 export function useHubMarketplace() {
-  const { t } = useTranslation()
   const navigate = useNavigate()
-  const queryClient = useQueryClient()
   const isLoadMoreLockedRef = useRef(false)
 
   const [marketQuery, setMarketQuery] = useState("")
@@ -36,21 +23,9 @@ export function useHubMarketplace() {
     queryKey: ["skills"],
     queryFn: getSkills,
   })
-  const { data: toolsData } = useQuery({
-    queryKey: ["tools"],
-    queryFn: getTools,
-  })
 
-  const findSkillsTool = toolsData?.tools.find(
-    (tool) => tool.name === "find_skills",
-  )
-  const installSkillTool = toolsData?.tools.find(
-    (tool) => tool.name === "install_skill",
-  )
-  const canSearchMarketplace = findSkillsTool?.status === "enabled"
-  const canInstallFromMarketplace = installSkillTool?.status === "enabled"
   const hasSubmittedQuery = submittedMarketQuery.trim() !== ""
-  const isMarketSearchActive = canSearchMarketplace && hasSubmittedQuery
+  const isMarketSearchActive = hasSubmittedQuery
 
   const {
     data: marketSearchData,
@@ -78,25 +53,7 @@ export function useHubMarketplace() {
     refetchOnWindowFocus: false,
   })
 
-  const installMutation = useMutation({
-    mutationFn: installSkill,
-    onSuccess: (response) => {
-      toast.success(
-        t("pages.agent.skills.install_success", {
-          name: response.skill?.name ?? response.slug,
-        }),
-      )
-      void queryClient.invalidateQueries({ queryKey: ["skills"] })
-      void queryClient.invalidateQueries({ queryKey: ["skills-marketplace"] })
-    },
-    onError: (err) => {
-      toast.error(
-        err instanceof Error
-          ? err.message
-          : t("pages.agent.skills.install_error"),
-      )
-    },
-  })
+  const { handleInstall, isInstallPending } = useSkillInstall()
 
   const allSkills = skillsData?.skills ?? []
   const workspaceSkillsByName = new Map(
@@ -113,16 +70,6 @@ export function useHubMarketplace() {
     (isMarketSearchPending || isMarketSearchFetching)
   const isMarketSearchLoadingMore =
     isMarketSearchActive && Boolean(marketSearchData) && isFetchingNextPage
-  const installPendingKey =
-    installMutation.isPending && installMutation.variables
-      ? `${installMutation.variables.registry}:${installMutation.variables.slug}`
-      : null
-
-  const unavailableToolMessages = buildUnavailableToolMessages({
-    searchTool: findSkillsTool,
-    installTool: installSkillTool,
-    t,
-  })
 
   useEffect(() => {
     if (!isFetchingNextPage) {
@@ -132,7 +79,7 @@ export function useHubMarketplace() {
 
   const handleSearchSubmit = () => {
     const nextQuery = marketQuery.trim()
-    if (!canSearchMarketplace || nextQuery === "") {
+    if (nextQuery === "") {
       return
     }
 
@@ -143,14 +90,6 @@ export function useHubMarketplace() {
     }
 
     setSubmittedMarketQuery(nextQuery)
-  }
-
-  const handleInstall = (result: SkillRegistrySearchResult) => {
-    installMutation.mutate({
-      slug: result.slug,
-      registry: result.registry_name,
-      version: result.version || undefined,
-    })
   }
 
   const handleViewInstalled = () => {
@@ -186,18 +125,12 @@ export function useHubMarketplace() {
     return workspaceSkillsByName.get(installedName) ?? null
   }
 
-  const isInstallPending = (result: SkillRegistrySearchResult) =>
-    installPendingKey === `${result.registry_name}:${result.slug}`
-
   return {
     marketQuery,
     submittedMarketQuery,
-    canSearchMarketplace,
-    canInstallFromMarketplace,
+    hasSubmittedQuery,
     marketResults,
     marketSearchError,
-    unavailableToolMessages,
-    hasSubmittedQuery,
     isMarketSearchInitialLoading,
     isMarketSearchLoadingMore,
     setMarketQuery,

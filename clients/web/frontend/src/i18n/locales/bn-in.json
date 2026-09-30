@@ -628,12 +628,8 @@
         "marketplace_description": "দক্ষতা রেজিস্ট্রি অনুসন্ধান করুন এবং এই ওয়ার্কস্পেসে দরকারী দক্ষতা ইনস্টল করুন",
         "marketplace_search_placeholder": "github, docker, database এর মতো ক্ষমতার জন্য অনুসন্ধান করুন...",
         "marketplace_search_action": "অনুসন্ধান",
-        "marketplace_search_status": "অনুসন্ধান স্ট্যাটাস",
-        "marketplace_install_status": "ইনস্টল স্ট্যাটাস",
         "marketplace_notice_title": "নিরাপত্তা বিজ্ঞপ্তি",
         "marketplace_notice_body": "রেজিস্ট্রি দক্ষতা তৃতীয় পক্ষের বিষয়বস্তু। ইনস্টল করার আগে লেখক, পৃষ্ঠার URL, নির্দেশাবলী এবং প্রয়োজনীয় কোড বা ক্রেডেনশিয়াল পর্যালোচনা করুন।",
-        "marketplace_status_disabled": "নিষ্ক্রিয়। প্রথমে টুল পৃষ্ঠায় সংশ্লিষ্ট টুল সক্ষম করুন।",
-        "marketplace_status_enable_hint": "প্রথমে টুল পৃষ্ঠায় সম্পর্কিত টুল সক্ষম করুন।",
         "marketplace_search_error": "রেজিস্ট্রি অনুসন্ধান করতে ব্যর্থ।",
         "marketplace_loading_results": "দক্ষতা অনুসন্ধান করা হচ্ছে...",
         "marketplace_loading_more": "আরও দক্ষতা লোড করা হচ্ছে...",
@@ -645,7 +641,6 @@
         "marketplace_installed_hint": "“{{name}}” হিসেবে এই ওয়ার্কস্পেসে ইতিমধ্যে উপলব্ধ।",
         "marketplace_empty_results": "“{{query}}”-এর সাথে কোনো ইনস্টলযোগ্য দক্ষতা মেলেনি।",
         "marketplace_idle": "কনফিগার করা রেজিস্ট্রি থেকে ইনস্টলযোগ্য দক্ষতা আবিষ্কার করতে একটি ক্ষমতার জন্য অনুসন্ধান করুন।",
-        "marketplace_unavailable": "রেজিস্ট্রি অনুসন্ধান বর্তমানে অনুপলব্ধ। দক্ষতা টুল কনফিগারেশন পরীক্ষা করুন।",
         "sort": {
           "name_asc": "নাম (A-Z)",
           "name_desc": "নাম (Z-A)",
@@ -676,8 +671,7 @@
         },
         "marketplace_installDisabled": {
           "installing": "ইনস্টল করা হচ্ছে...",
-          "installed": "ইতিমধ্যে ইনস্টল করা হয়েছে",
-          "cannotInstall": "ইনস্টল করা যাবে না: সম্পর্কিত টুল সক্ষম নয়"
+          "installed": "ইতিমধ্যে ইনস্টল করা হয়েছে"
         }
       },
       "tools": {

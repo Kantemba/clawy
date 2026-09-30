@@ -9,27 +9,23 @@ import {
 import { MarketSkillCard } from "./market-skill-card"
 
 export function ResultsPanel({
-  canSearchMarketplace,
   hasSubmittedQuery,
   submittedQuery,
   marketResults,
   marketSearchError,
   isMarketSearchInitialLoading,
   isMarketSearchLoadingMore,
-  canInstallFromMarketplace,
   getInstalledSkill,
   isInstallPending,
   onInstall,
   onViewInstalled,
 }: {
-  canSearchMarketplace: boolean
   hasSubmittedQuery: boolean
   submittedQuery: string
   marketResults: SkillRegistrySearchResult[]
   marketSearchError: unknown
   isMarketSearchInitialLoading: boolean
   isMarketSearchLoadingMore: boolean
-  canInstallFromMarketplace: boolean
   getInstalledSkill: (installedName?: string) => SkillSupportItem | null
   isInstallPending: (result: SkillRegistrySearchResult) => boolean
   onInstall: (result: SkillRegistrySearchResult) => void
@@ -40,7 +36,7 @@ export function ResultsPanel({
   return (
     <div className="mx-auto flex w-full max-w-[1000px] justify-center">
       <div className="w-full">
-        {canSearchMarketplace && hasSubmittedQuery ? (
+        {hasSubmittedQuery ? (
           <div className="space-y-6">
             <div className="rounded-xl border border-border bg-muted px-4 py-3 text-sm text-foreground">
               <div className="font-semibold">
@@ -87,7 +83,6 @@ export function ResultsPanel({
                     <MarketSkillCard
                       key={`${result.registry_name}:${result.slug}`}
                       result={result}
-                      canInstall={canInstallFromMarketplace}
                       installPending={isInstallPending(result)}
                       installedSkill={getInstalledSkill(result.installed_name)}
                       onInstall={() => onInstall(result)}
@@ -114,12 +109,6 @@ export function ResultsPanel({
                 </span>
               </div>
             )}
-          </div>
-        ) : !canSearchMarketplace ? (
-          <div className="border-border/40 bg-muted/10 flex min-h-[200px] flex-col items-center justify-center gap-3 rounded-xl border border-dashed">
-            <span className="text-muted-foreground text-sm font-medium">
-              {t("pages.agent.skills.marketplace_unavailable")}
-            </span>
           </div>
         ) : (
           <div className="border-border/40 bg-muted/10 flex min-h-[200px] flex-col items-center justify-center gap-3 rounded-xl border border-dashed">

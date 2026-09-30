@@ -629,12 +629,8 @@
         "marketplace_description": "Pesquise nos registries de skills e instale skills úteis neste workspace",
         "marketplace_search_placeholder": "Pesquise capacidades como github, docker, database...",
         "marketplace_search_action": "Pesquisar",
-        "marketplace_search_status": "Status da Pesquisa",
-        "marketplace_install_status": "Status da Instalação",
         "marketplace_notice_title": "Aviso de Segurança",
         "marketplace_notice_body": "Skills do registry são conteúdo de terceiros. Revise o autor, URL da página, instruções e qualquer código ou credencial requerida antes de instalar.",
-        "marketplace_status_disabled": "Desabilitado. Habilite a ferramenta correspondente na página de Ferramentas primeiro.",
-        "marketplace_status_enable_hint": "Habilite a ferramenta relacionada na página de Ferramentas primeiro.",
         "marketplace_search_error": "Falha ao pesquisar registries.",
         "marketplace_loading_results": "Pesquisando skills...",
         "marketplace_loading_more": "Carregando mais skills...",
@@ -646,7 +642,6 @@
         "marketplace_installed_hint": "Já disponível neste workspace como “{{name}}”.",
         "marketplace_empty_results": "Nenhuma skill instalável encontrada para “{{query}}”.",
         "marketplace_idle": "Pesquise por uma capacidade para descobrir skills instaláveis nos registries configurados.",
-        "marketplace_unavailable": "Pesquisa de registries indisponível no momento. Verifique a configuração das ferramentas de Skills.",
         "sort": {
           "name_asc": "Nome (A-Z)",
           "name_desc": "Nome (Z-A)",
@@ -677,8 +672,7 @@
         },
         "marketplace_installDisabled": {
           "installing": "Instalando...",
-          "installed": "Já instalada",
-          "cannotInstall": "Não é possível instalar: ferramenta relacionada não está habilitada"
+          "installed": "Já instalada"
         }
       },
       "tools": {

@@ -1842,6 +1842,126 @@ func TestHandleInstallSkillRejectsInvalidArchive(t *testing.T) {
 	}
 }
 
+// The find_skills / install_skill tool switches only gate what the *agent*
+// may do in chat. Searching and installing from the web UI is an explicit
+// user action and must keep working when an operator has those tools off.
+func TestSkillRegistryUIEndpointsIgnoreAgentToolSwitches(t *testing.T) {
+	configPath, cleanup := setupOAuthTestEnv(t)
+	defer cleanup()
+
+	cfg, err := config.LoadConfig(configPath)
+	if err != nil {
+		t.Fatalf("LoadConfig() error = %v", err)
+	}
+	workspace := filepath.Join(t.TempDir(), "workspace")
+	cfg.Agents.Defaults.Workspace = workspace
+
+	zipContent := buildSkillZip(t, map[string]string{
+		"SKILL.md": "---\nname: github\ndescription: GitHub registry skill\n---\n# GitHub\n",
+	})
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/api/v1/search":
+			_ = json.NewEncoder(w).Encode(map[string]any{
+				"results": []map[string]any{
+					{
+						"score":       0.95,
+						"slug":        "github",
+						"displayName": "GitHub",
+						"summary":     "GitHub registry skill",
+						"version":     "1.2.3",
+					},
+				},
+			})
+		case "/api/v1/skills/github":
+			_ = json.NewEncoder(w).Encode(map[string]any{
+				"slug":        "github",
+				"displayName": "GitHub",
+				"summary":     "GitHub registry skill",
+				"latestVersion": map[string]any{
+					"version": "1.2.3",
+				},
+				"moderation": map[string]any{
+					"isMalwareBlocked": false,
+					"isSuspicious":     false,
+				},
+			})
+		case "/api/v1/download":
+			w.Header().Set("Content-Type", "application/zip")
+			_, _ = w.Write(zipContent)
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer server.Close()
+
+	setClawHubBaseURL(cfg, server.URL)
+	cfg.Tools.Skills.Enabled = false
+	cfg.Tools.FindSkills.Enabled = false
+	cfg.Tools.FindSkill.Enabled = false
+	cfg.Tools.InstallSkill.Enabled = false
+	if err := config.SaveConfig(configPath, cfg); err != nil {
+		t.Fatalf("SaveConfig() error = %v", err)
+	}
+
+	h := NewHandler(configPath)
+	mux := http.NewServeMux()
+	h.RegisterRoutes(mux)
+
+	searchRec := httptest.NewRecorder()
+	mux.ServeHTTP(searchRec, httptest.NewRequest(http.MethodGet, "/api/skills/search?q=github", nil))
+	if searchRec.Code != http.StatusOK {
+		t.Fatalf("search status = %d, want %d, body=%s", searchRec.Code, http.StatusOK, searchRec.Body.String())
+	}
+	var searchResp skillSearchResponse
+	if err := json.Unmarshal(searchRec.Body.Bytes(), &searchResp); err != nil {
+		t.Fatalf("Unmarshal(search response) error = %v", err)
+	}
+	if len(searchResp.Results) != 1 || searchResp.Results[0].Slug != "github" {
+		t.Fatalf("search results = %#v, want one github result", searchResp.Results)
+	}
+
+	body, err := json.Marshal(installSkillRequest{Slug: "github", Registry: "clawhub"})
+	if err != nil {
+		t.Fatalf("Marshal() error = %v", err)
+	}
+	installRec := httptest.NewRecorder()
+	installReq := httptest.NewRequest(http.MethodPost, "/api/skills/install", bytes.NewReader(body))
+	installReq.Header.Set("Content-Type", "application/json")
+	mux.ServeHTTP(installRec, installReq)
+	if installRec.Code != http.StatusOK {
+		t.Fatalf("install status = %d, want %d, body=%s", installRec.Code, http.StatusOK, installRec.Body.String())
+	}
+	var installResp installSkillResponse
+	if err := json.Unmarshal(installRec.Body.Bytes(), &installResp); err != nil {
+		t.Fatalf("Unmarshal(install response) error = %v", err)
+	}
+	if installResp.Status != "ok" || installResp.InstalledSkill == nil {
+		t.Fatalf("unexpected install response: %#v", installResp)
+	}
+
+	skillFile := filepath.Join(workspace, "skills", "github", "SKILL.md")
+	if _, err := os.Stat(skillFile); err != nil {
+		t.Fatalf("installed skill file missing: %v", err)
+	}
+
+	installedRec := httptest.NewRecorder()
+	mux.ServeHTTP(installedRec, httptest.NewRequest(http.MethodGet, "/api/skills/search?q=github", nil))
+	if installedRec.Code != http.StatusOK {
+		t.Fatalf("installed search status = %d, want %d, body=%s", installedRec.Code, http.StatusOK, installedRec.Body.String())
+	}
+	var installedResp skillSearchResponse
+	if err := json.Unmarshal(installedRec.Body.Bytes(), &installedResp); err != nil {
+		t.Fatalf("Unmarshal(installed search) error = %v", err)
+	}
+	if len(installedResp.Results) != 1 ||
+		!installedResp.Results[0].Installed ||
+		installedResp.Results[0].InstalledName != "github" {
+		t.Fatalf("installed search results = %#v, want github marked installed", installedResp.Results)
+	}
+}
+
 func buildSkillZip(t *testing.T, files map[string]string) []byte {
 	t.Helper()
 

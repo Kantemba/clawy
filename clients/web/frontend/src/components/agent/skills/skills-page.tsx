@@ -1,4 +1,5 @@
-import { IconLoader2, IconPlus } from "@tabler/icons-react"
+import { IconLoader2, IconPlus, IconSearch } from "@tabler/icons-react"
+import { useState } from "react"
 import { useTranslation } from "react-i18next"
 
 import { PageHeader } from "@/components/page-header"
@@ -7,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import { DeleteDialog } from "./delete-dialog"
 import { DetailSheet } from "./detail-sheet"
 import { FilterBar } from "./filter-bar"
+import { FindSkillsDialog } from "./find-skills-dialog"
 import { ImportDialog } from "./import-dialog"
 import { PageSkeleton } from "./page-skeleton"
 import { SkillsList } from "./skills-list"
@@ -15,6 +17,7 @@ import { useSkillsPage } from "./use-skills-page"
 
 export function SkillsPage() {
   const { t } = useTranslation()
+  const [isFindDialogOpen, setIsFindDialogOpen] = useState(false)
   const {
     searchQuery,
     sourceFilter,
@@ -72,6 +75,13 @@ export function SkillsPage() {
             />
             <Button
               variant="outline"
+              onClick={() => setIsFindDialogOpen(true)}
+            >
+              <IconSearch className="size-4" />
+              {t("pages.agent.skills.find")}
+            </Button>
+            <Button
+              variant="outline"
               onClick={openImportDialog}
               disabled={isImportPending}
             >
@@ -120,6 +130,7 @@ export function SkillsPage() {
                 hasActiveFilters={hasActiveFilters}
                 onViewSkill={handleViewSkill}
                 onDeleteSkill={handleRequestDelete}
+                onFindSkills={() => setIsFindDialogOpen(true)}
               />
             </section>
           )}
@@ -146,6 +157,11 @@ export function SkillsPage() {
         onDragEnter={handleDropZoneDragEnter}
         onDragLeave={handleDropZoneDragLeave}
         onDrop={handleDropZoneDrop}
+      />
+
+      <FindSkillsDialog
+        open={isFindDialogOpen}
+        onOpenChange={setIsFindDialogOpen}
       />
 
       <DeleteDialog

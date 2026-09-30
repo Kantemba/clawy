@@ -650,12 +650,8 @@
         "marketplace_description": "搜索第三方技能源，并将技能安装到当前工作区",
         "marketplace_search_placeholder": "搜索 github、docker、database 等技能",
         "marketplace_search_action": "搜索",
-        "marketplace_search_status": "搜索状态",
-        "marketplace_install_status": "安装状态",
         "marketplace_notice_title": "安全提示",
         "marketplace_notice_body": "搜索结果中的 skills 属于第三方内容。安装前请先确认作者、页面 URL、说明文档，以及它要求执行的代码或使用的凭据是否可信。",
-        "marketplace_status_disabled": "当前未启用，请先在工具页启用对应工具。",
-        "marketplace_status_enable_hint": "请先在工具页启用相关工具。",
         "marketplace_search_error": "搜索技能源失败。",
         "marketplace_loading_results": "正在搜索技能...",
         "marketplace_loading_more": "正在加载更多技能...",
@@ -667,7 +663,6 @@
         "marketplace_installed_hint": "该技能已在当前工作区中可用，名称为「{{name}}」。",
         "marketplace_empty_results": "没有找到与“{{query}}”匹配的可安装技能。",
         "marketplace_idle": "输入一个关键词，搜索可安装的第三方技能。",
-        "marketplace_unavailable": "当前无法使用技能搜索，请检查 Skills 相关工具配置。",
         "sort": {
           "name_asc": "名称（A-Z）",
           "name_desc": "名称（Z-A）",
@@ -698,8 +693,7 @@
         },
         "marketplace_installDisabled": {
           "installing": "正在安装...",
-          "installed": "已安装",
-          "cannotInstall": "无法安装：相关工具未启用"
+          "installed": "已安装"
         }
       },
       "tools": {

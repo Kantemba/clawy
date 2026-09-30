@@ -627,12 +627,8 @@
         "marketplace_description": "Prohledejte registry dovedností a nainstalujte užitečné dovednosti do tohoto workspace",
         "marketplace_search_placeholder": "Hledat schopnosti jako github, docker, database...",
         "marketplace_search_action": "Hledat",
-        "marketplace_search_status": "Stav hledání",
-        "marketplace_install_status": "Stav instalace",
         "marketplace_notice_title": "Bezpečnostní upozornění",
         "marketplace_notice_body": "Dovednosti z registru jsou obsah třetích stran. Před instalací zkontrolujte autora, URL stránky, instrukce a veškerý požadovaný kód nebo přihlašovací údaje.",
-        "marketplace_status_disabled": "Zakázáno. Nejprve aktivujte příslušný nástroj na stránce Nástroje.",
-        "marketplace_status_enable_hint": "Nejprve aktivujte příslušný nástroj na stránce Nástroje.",
         "marketplace_search_error": "Prohledání registrů selhalo.",
         "marketplace_loading_results": "Hledám dovednosti...",
         "marketplace_loading_more": "Načítám další dovednosti...",
@@ -644,7 +640,6 @@
         "marketplace_installed_hint": "Již dostupné v tomto workspace jako \"{{name}}\".",
         "marketplace_empty_results": "Žádné instalovatelné dovednosti neodpovídají \"{{query}}\".",
         "marketplace_idle": "Hledejte schopnost pro zobrazení instalovatelných dovedností z nakonfigurovaných registrů.",
-        "marketplace_unavailable": "Prohledávání registrů je momentálně nedostupné. Zkontrolujte nastavení nástrojů Dovednosti.",
         "sort": {
           "name_asc": "Název (A-Z)",
           "name_desc": "Název (Z-A)",
@@ -675,8 +670,7 @@
         },
         "marketplace_installDisabled": {
           "installing": "Instaluji...",
-          "installed": "Již nainstalováno",
-          "cannotInstall": "Nelze nainstalovat: příslušný nástroj není aktivní"
+          "installed": "Již nainstalováno"
         }
       },
       "tools": {

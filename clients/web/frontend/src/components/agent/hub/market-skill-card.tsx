@@ -26,14 +26,12 @@ import {
 
 export function MarketSkillCard({
   result,
-  canInstall,
   installPending,
   installedSkill,
   onInstall,
   onViewInstalled,
 }: {
   result: SkillRegistrySearchResult
-  canInstall: boolean
   installPending: boolean
   installedSkill: SkillSupportItem | null
   onInstall: () => void
@@ -46,11 +44,9 @@ export function MarketSkillCard({
       return t("pages.agent.skills.marketplace_installDisabled.installing")
     if (result.installed)
       return t("pages.agent.skills.marketplace_installDisabled.installed")
-    if (!canInstall)
-      return t("pages.agent.skills.marketplace_installDisabled.cannotInstall")
     return t("pages.agent.skills.marketplace_install_action")
   })()
-  const installDisabled = !canInstall || result.installed || installPending
+  const installDisabled = result.installed || installPending
 
   return (
     <Card
